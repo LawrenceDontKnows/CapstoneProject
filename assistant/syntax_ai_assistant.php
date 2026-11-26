@@ -1,13 +1,12 @@
 <?php
 include '../includes/conn.php';
 include '../includes/functions.php';
+include '../includes/ai_config.php';
 
-// Completely disable the minifyHTML output buffer started in functions.php
-while (ob_get_level()) {
-    ob_end_clean();
-}
+validateSession(); // Enforce all session security checks (timeout, fingerprint, etc.)
 
 if (!isLoggedIn() || !hasRole('student')) {
+    http_response_code(403); // Forbidden
     echo json_encode(['recommendation' => 'Greetings. Please log in to access the Syntax AI assistant.']);
     exit;
 }
@@ -40,6 +39,60 @@ if ($is_affirmative && $last_intent) {
 $stmt = $pdo->prepare("SELECT g.*, s.name as subject_name FROM grades g JOIN subjects s ON g.subject_id = s.id WHERE g.student_id = ?");
 $stmt->execute([$student_id]);
 $grades = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// --- LLM-powered intelligence (Gemini) ---
+if (defined('GEMINI_API_KEY') && GEMINI_API_KEY !== '') {
+    $student_context = "Student: " . ($_SESSION['first_name'] ?? '') . " " . ($_SESSION['last_name'] ?? '') . "\n";
+    $student_context .= "Course: " . ($profile['course'] ?? 'N/A') . ", Year: " . ($profile['year_level'] ?? 'N/A') . "\n";
+    $student_context .= "Grades:\n";
+    foreach ($grades as $g) {
+        $student_context .= "- " . $g['subject_name'] . ": Final Average " . $g['grade'] . " (Prelim:" . ($g['prelim'] ?? 0) . " Midterm:" . ($g['midterm'] ?? 0) . " Prefinal:" . ($g['prefinal'] ?? 0) . " Final:" . ($g['final'] ?? 0) . ")\n";
+    }
+    $prompt = "You are Syntax AI, a helpful academic advisor for a student grade portal. Use the student's grade data to answer their question conversationally and accurately. Keep responses concise (under 150 words), friendly, and use simple HTML (<strong>, <br>, <ul>, <li>) for formatting. Do not invent grades not in the data. If no data, say so.\n\n" . $student_context . "\nStudent question: " . $query;
+
+    $url = "https://generativelanguage.googleapis.com/v1beta/models/" . GEMINI_MODEL . ":generateContent?key=" . GEMINI_API_KEY;
+    $payload = json_encode(['contents' => [['parts' => [['text' => $prompt]]]]]);
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+    $res = curl_exec($ch);
+    $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    
+    if ($res && $http === 200) {
+        $data = json_decode($res, true);
+        $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
+        if ($text !== '') {
+            header('Content-Type: application/json');
+            echo json_encode(['recommendation' => $text, 'context' => ['lowest_subject' => 'N/A', 'trend_status' => 'stable']]);
+            exit;
+        }
+    }
+}
+
+// If no Gemini key or Gemini failed, use free Pollinations endpoint (no key required)
+{
+    $student_context = "Student: " . ($_SESSION['first_name'] ?? '') . " " . ($_SESSION['last_name'] ?? '') . "\n";
+    $student_context .= "Course: " . ($profile['course'] ?? 'N/A') . ", Year: " . ($profile['year_level'] ?? 'N/A') . "\nGrades:\n";
+    foreach ($grades as $g) {
+        $student_context .= "- " . $g['subject_name'] . ": Final Average " . $g['grade'] . " (Prelim:" . ($g['prelim'] ?? 0) . " Midterm:" . ($g['midterm'] ?? 0) . " Prefinal:" . ($g['prefinal'] ?? 0) . " Final:" . ($g['final'] ?? 0) . ")\n";
+    }
+    $prompt = "You are Syntax AI, a helpful academic advisor for a student grade portal. Use the student's grade data to answer their question conversationally and accurately. Keep responses concise (under 150 words), friendly, and use simple HTML (<strong>, <br>, <ul>, <li>) for formatting. Do not invent grades not in the data. If no data, say so.\n\n" . $student_context . "\nStudent question: " . $query;
+    $url = "https://text.pollinations.ai/" . rawurlencode($prompt);
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 25);
+    $res = curl_exec($ch);
+    $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    
+    if ($res && $http === 200 && trim($res) !== '') {
+        header('Content-Type: application/json');
+        echo json_encode(['recommendation' => trim($res), 'context' => ['lowest_subject' => 'N/A', 'trend_status' => 'stable']]);
+        exit;
+    }
+}
 
 $lowest_grade = 101; // Initialize higher than max possible grade (100)
 $lowest_subject = "N/A";
@@ -319,7 +372,7 @@ elseif (preg_match('/(recommend|help|advice|suggest|improve|tips|what should i d
     $response = "You are most welcome. Academic excellence is a journey, and I am here to help you navigate it. <strong>Is there any other data you would like me to examine?</strong>";
     $_SESSION['last_ai_intent'] = 'status'; // Suggest checking status if they are done
 } else {
-    $response = "I apologize, " . $_SESSION['first_name'] . ", but I didn't quite catch that. I am specifically programmed to analyze your academic data. Try asking about your <strong>status</strong>, <strong>recommendations</strong>, or <strong>grade trends</strong>.";
+    $response = "I can help with that! For profile changes, go to the <strong>My Profile</strong> tab and click <strong>Edit Profile</strong>. For documents, check the <strong>Grades</strong> tab and use <strong>Print Grade Slip</strong>. Feel free to ask anything else about your grades or account.";
     unset($_SESSION['last_ai_intent']);
 }
 

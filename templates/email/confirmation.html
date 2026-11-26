@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{subject}} - GradeView Portal</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background-color: #ffffff;
+            border-radius: 1rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #1e3a8a 0%, #764ba2 100%);
+            padding: 32px 24px;
+            text-align: center;
+        }
+        .header img {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 50%;
+            margin-bottom: 16px;
+        }
+        .header h1 {
+            color: #ffffff;
+            margin: 0;
+            font-size: 24px;
+            font-weight: 800;
+        }
+        .header p {
+            color: #e2e8f0;
+            margin: 8px 0 0;
+            font-size: 14px;
+        }
+        .content {
+            padding: 40px 32px;
+            text-align: center;
+        }
+        .content h2 {
+            color: #1e293b;
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        .content p {
+            color: #475569;
+            font-size: 16px;
+            margin-bottom: 24px;
+        }
+        {{#if button_text}}
+        <a href="{{action_url}}" class="button">{{button_text}}</a>
+        {{/if button_text}}
+        <hr class="divider">
+        <p>Or copy and paste this link into your browser:</p>
+        <p class="copy-link">{{action_url}}</p>
+        {{#if extra_message}}
+        <p>{{extra_message}}</p>
+        {{/if extra_message}}
+        <div class="footer">
+            <p>© 2026 GradeView Portal. All rights reserved.</p>
+            <p>This is an automated message, please do not reply.</p>
+        </div>
+    </div>
+</body>
+</html>

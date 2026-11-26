@@ -1,0 +1,16 @@
+.git
+.gitignore
+.kilo
+.vscode
+credentials
+error.log
+*.log
+composer.phar
+package.json
+package-lock.json
+node_modules
+uploads
+Dockerfile
+.dockerignore
+docs
+README.md

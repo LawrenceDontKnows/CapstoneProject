@@ -11,12 +11,10 @@ if (hasRole('student')) {
     $where_clauses[] = "u_s.id = ?";
     $params[] = $_SESSION['user_id'];
 } elseif (hasRole('teacher')) {
-    if (!isset($_GET['all_students'])) {
-        $where_clauses[] = "g.teacher_id = ?";
-        $params[] = $_SESSION['user_id'];
-    }
-    // If all_students is set, we don't add the teacher filter, 
-    // allowing the teacher to see the master list (enrolled/unenrolled)
+    // Security Fix: A teacher should ALWAYS be scoped to their own ID.
+    // The 'all_students' flag will now correctly mean "all students taught by this teacher".
+    $where_clauses[] = "g.teacher_id = ?";
+    $params[] = $_SESSION['user_id'];
 } elseif (hasRole('admin')) {
     if (isset($_GET['subject_id'])) {
         $where_clauses[] = "g.subject_id = ?";
@@ -36,7 +34,7 @@ $query = "SELECT u_s.id as student_id, u_s.first_name as student_first, u_s.last
           LEFT JOIN subjects s ON g.subject_id = s.id 
           LEFT JOIN users u_t ON g.teacher_id = u_t.id
           $where_sql 
-          ORDER BY u_t.last_name ASC, s.name ASC, u_s.year_level DESC, u_s.course ASC, u_s.last_name ASC";
+          ORDER BY u_t.last_name, u_t.first_name, s.name, u_s.last_name, u_s.first_name";
 
 $stmt = $pdo->prepare($query);
 $stmt->execute($params);
@@ -52,27 +50,41 @@ if (empty($all_grades)) die("No records found to print.");
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { background: #f8f9fa; padding: 40px 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .report-container { background: white; max-width: 1140px; margin: 0 auto; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
         .table thead th { background-color: #f8f9fa !important; border-bottom: 2px solid #dee2e6; color: #333; font-weight: 700; text-transform: uppercase; font-size: 0.75rem; vertical-align: middle; }
         .table td { vertical-align: middle; font-size: 0.9rem; }
         .slip-header h3 { letter-spacing: 1px; font-weight: 800; color: #1e3a8a; }
+        .print-header {
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
         @media print { 
             body { background: white; padding: 0; } 
             .no-print { display: none; } 
-            .report-container { box-shadow: none; border: none !important; width: 100% !important; max-width: 100% !important; padding: 0 !important; }
+            .report-container { box-shadow: none; border: none !important; width: 100% !important; max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
             .subject-section { page-break-before: always; }
             .table thead th { -webkit-print-color-adjust: exact; background-color: #f8f9fa !important; }
         }
     </style>
 </head>
-<body>
-    <div class="text-center mb-5 no-print">
-        <button onclick="window.print()" class="btn btn-primary px-5 me-2"><i class="fas fa-print me-2"></i> Print Report</button>
-        <button onclick="window.close()" class="btn btn-secondary px-5"><i class="fas fa-arrow-left me-2"></i> Back</button>
-    </div>
+<body class="d-flex flex-column min-vh-100">
+    <header class="p-3 mb-4 no-print print-header">
+        <div class="container">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div class="d-flex align-items-center">
+                    <img src="<?php echo getSystemSetting($pdo, 'system_logo', 'image/aclc.jpg'); ?>" alt="Logo" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; margin-right: 15px;">
+                    <h4 class="mb-0 fw-bold text-secondary">Academic Report</h4>
+                </div>
+                <div class="d-flex gap-2">
+                    <button onclick="window.print()" class="btn btn-primary"><i class="fas fa-print me-2"></i> Print</button>
+                    <button onclick="window.close()" class="btn btn-secondary"><i class="fas fa-arrow-left me-2"></i> Back</button>
+                </div>
+            </div>
+        </div>
+    </header>
 
-    <div class="container border p-5 report-container">
+    <div class="container border p-5 report-container mb-5">
         <div class="slip-header text-center">
             <img src="<?php echo getSystemSetting($pdo, 'system_logo', 'image/aclc.jpg'); ?>" alt="Logo" style="width: 100px; height: 100px; margin-bottom: 15px; border-radius: 50%; object-fit: cover;">
             <h3>GRADEVIEW ACADEMIC PORTAL</h3>
@@ -151,5 +163,7 @@ if (empty($all_grades)) die("No records found to print.");
             <div class="col-6"><div class="pt-2 border-top w-75 mx-auto fw-bold">Registrar / Teacher</div></div>
         </div>
     </div>
+
+    <?php include 'footer.php'; ?>
 </body>
 </html>

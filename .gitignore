@@ -1,0 +1,23 @@
+# Dependencies
+/vendor/
+/composer/vendor/
+
+# Uploads (ephemeral on Render; keep local copies out of git)
+/uploads/
+
+# Logs & errors
+/error.log
+*.log
+
+# Sensitive / local-only
+/credentials/
+.env
+
+# Composer binary
+/composer.phar
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.kilo/
+package-lock.json

@@ -1,7 +1,14 @@
-<?php
+﻿<?php
 include 'includes/conn.php';
 include 'includes/functions.php';
+include 'includes/mailer.php';
 requireRole('admin');
+validateSession(); // Add this line for session security checks
+
+// CSRF Protection: Generate a token if one doesn't exist for the forms on this page.
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
 
 // Handle AJAX Search Suggestions
 if (isset($_GET['ajax_search'])) {
@@ -10,6 +17,39 @@ if (isset($_GET['ajax_search'])) {
     $stmt = $pdo->prepare("SELECT first_name, last_name, username, role FROM users WHERE status = 'active' AND (first_name LIKE ? OR last_name LIKE ? OR username LIKE ? OR email LIKE ?) LIMIT 5");
     $stmt->execute(["%$query%", "%$query%", "%$query%", "%$query%"]);
     echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+    exit;
+}
+
+// Handle AJAX to get students for a subject
+if (isset($_GET['ajax_get_students_by_subject'])) {
+    header('Content-Type: application/json');
+    try {
+        $subject_id = $_GET['ajax_get_students_by_subject'];
+        
+        // Fetch subject details (including new fields)
+        $subject_stmt = $pdo->prepare("SELECT name, target_course, target_year_level FROM subjects WHERE id = ?");
+        $subject_stmt->execute([$subject_id]);
+        $subject_details = $subject_stmt->fetch(PDO::FETCH_ASSOC);
+
+        // Query to get students enrolled in the specific subject
+        $students_stmt = $pdo->prepare("
+            SELECT u.first_name, u.last_name, u.course, u.year_level 
+            FROM users u
+            JOIN grades g ON u.id = g.student_id
+            WHERE g.subject_id = ? AND u.role = 'student' AND u.status = 'active'
+            ORDER BY u.last_name, u.first_name
+        ");
+        $students_stmt->execute([$subject_id]);
+        $students = $students_stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        echo json_encode(['details' => $subject_details, 'students' => $students]);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        // Log the real error for the developer
+        error_log("Admin AJAX get_students_by_subject failed: " . $e->getMessage());
+        // Send a generic, safe, JSON-formatted error to the client
+        echo json_encode(['error' => 'A database error occurred. This might be due to missing `target_course` or `target_year_level` columns in the `subjects` table.']);
+    }
     exit;
 }
 
@@ -24,7 +64,9 @@ if (isset($_GET['ajax_performance'])) {
     $period_sums = ['prelim' => 0, 'midterm' => 0, 'prefinal' => 0, 'final' => 0];
     $period_counts = ['prelim' => 0, 'midterm' => 0, 'prefinal' => 0, 'final' => 0];
     $datasets = [];
-    $distribution = ['1.0' => 0, '2.0' => 0, '3.0' => 0, '4.0' => 0, 'INC' => 0];
+    // Initialize distribution with the correct grade point labels used across the system.
+    $grade_point_labels = ['1.00', '1.25', '1.50', '1.75', '2.00', '2.25', '2.50', '2.75', '3.00', '5.00', 'IP'];
+    $distribution = array_fill_keys($grade_point_labels, 0);
     $avg_sum = 0;
     foreach ($grades as $g) {
         $avg_sum += $g['grade'];
@@ -34,11 +76,12 @@ if (isset($_GET['ajax_performance'])) {
                 $period_counts[$p]++;
             }
         }
-        $letter = calculateGradePoint($g['grade']);
-        if(isset($distribution[$letter])) $distribution[$letter]++;
+        // Correctly increment the distribution array.
+        $point = calculateGradePoint($g['grade']);
+        if (isset($distribution[$point])) $distribution[$point]++;
         $hue = abs(crc32($g['subject_name'])) % 360;
         $datasets[] = [
-            'label' => $g['subject_name'],
+            'label' => htmlspecialchars($g['subject_name']),
             'data' => [(float)($g['prelim']??0), (float)($g['midterm']??0), (float)($g['prefinal']??0), (float)($g['final']??0)],
             'borderColor' => "hsl($hue, 70%, 45%)",
             'tension' => 0.4
@@ -72,44 +115,113 @@ $active_tab = $_GET['tab'] ?? 'dashboard';
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['add_user'])) {
-        $username = trim($_POST['username']);
-        $plain_password = $_POST['password']; // Get plain password for validation
+    // Central CSRF Token Validation for all POST requests
+    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+        $_SESSION['message'] = "Invalid form submission (CSRF token mismatch). Please try again.";
+        $_SESSION['message_type'] = "danger";
+        redirect("admin.php?tab=" . ($active_tab ?? 'dashboard'));
+    }
+
+    if (isset($_POST['update_admin_profile'])) {
+        $first_name = trim($_POST['first_name']);
+        $last_name = trim($_POST['last_name']);
         $email = trim($_POST['email']);
-        $role = $_POST['role'];
-        $first_name = $_POST['first_name'];
-        $last_name = $_POST['last_name'];
+        $new_password = $_POST['new_password'];
+        $confirm_password = $_POST['confirm_password'];
+        $admin_id = $_SESSION['user_id'];
+        
+        $errors = [];
+        // Handle file upload
+        $profile_picture_path = handleProfilePictureUpload($pdo, $_FILES['profile_picture'] ?? null, $admin_id, $errors);
 
-        if (strlen($plain_password) < 8) { // Add password length validation
-            $message = "Password must be at least 8 characters long!";
-            $message_type = "danger";
-        } else {
-            $password = password_hash($plain_password, PASSWORD_DEFAULT); // Hash only after validation
+        $check_email = $pdo->prepare("SELECT id FROM users WHERE email = ? AND id != ?");
+        $check_email->execute([$email, $admin_id]);
+        if ($check_email->rowCount() > 0) $errors[] = "Email is already in use by another account.";
 
-            // Check if username or email already exists
-            $check_stmt = $pdo->prepare("SELECT id FROM users WHERE username = ? OR email = ?");
-            $check_stmt->execute([$username, $email]);
-
-            if ($check_stmt->rowCount() > 0) {
-                $message = "Username or Email already exists!";
-                $message_type = "danger";
-            } else {
-                $stmt = $pdo->prepare("INSERT INTO users (username, password, email, role, first_name, last_name) VALUES (?, ?, ?, ?, ?, ?)");
-                $stmt->execute([$username, $password, $email, $role, $first_name, $last_name]);
-                $new_user_id = $pdo->lastInsertId();
-                $message = "Success: User '{$username}' has been successfully created with the role of " . ucfirst($role) . ".";
-                $message_type = "success";
-                $_SESSION['message'] = $message;
-                $_SESSION['message_type'] = $message_type;
-                $_SESSION['updated_user_id'] = $new_user_id;
-                redirect("admin.php?tab=users");
-            }
+        if (!empty($new_password)) {
+            if ($new_password !== $confirm_password) $errors[] = "Passwords do not match.";
+            if (strlen($new_password) < 8) $errors[] = "New password must be at least 8 characters long.";
         }
+
+        if (empty($errors)) {
+            $sql_parts = ["first_name = ?", "last_name = ?", "email = ?"];
+            $params = [$first_name, $last_name, $email];
+
+            if ($profile_picture_path) {
+                $sql_parts[] = "profile_picture = ?";
+                $params[] = $profile_picture_path;
+            }
+
+            if (!empty($new_password)) {
+                $sql_parts[] = "password = ?";
+                $params[] = password_hash($new_password, PASSWORD_DEFAULT);
+            }
+            
+            $params[] = $admin_id;
+            $sql = "UPDATE users SET " . implode(", ", $sql_parts) . " WHERE id = ?";
+            $pdo->prepare($sql)->execute($params);
+            
+            $_SESSION['first_name'] = $first_name;
+            $_SESSION['last_name'] = $last_name;
+            
+            $_SESSION['message'] = "Your profile has been updated successfully.";
+            $_SESSION['message_type'] = "success";
+        } else {
+            $_SESSION['message'] = implode(" ", $errors);
+            $_SESSION['message_type'] = "danger";
+        }
+        redirect("admin.php?tab=settings");
+    }
+
+    if (isset($_POST['add_broadcast_template'])) {
+        try {
+            $stmt = $pdo->prepare("INSERT INTO broadcast_templates (title, message, role_access) VALUES (?, ?, ?)");
+            $stmt->execute([$_POST['title'], $_POST['message'], $_POST['role_access'] ?? 'admin']);
+            $_SESSION['message'] = "Broadcast template added successfully.";
+            $_SESSION['message_type'] = "success";
+        } catch (PDOException $e) {
+            $_SESSION['message'] = "Database Error: Could not add template. The 'broadcast_templates' table may be missing.";
+            $_SESSION['message_type'] = "danger";
+            error_log("Add Broadcast Template Error: " . $e->getMessage());
+        }
+        redirect("admin.php?tab=settings&sub_tab=broadcast");
+    }
+
+    if (isset($_POST['update_broadcast_template'])) {
+        try {
+            $stmt = $pdo->prepare("UPDATE broadcast_templates SET title = ?, message = ?, role_access = ? WHERE id = ?");
+            $stmt->execute([$_POST['title'], $_POST['message'], $_POST['role_access'] ?? 'admin', $_POST['template_id']]);
+            $_SESSION['message'] = "Broadcast template updated successfully.";
+            $_SESSION['message_type'] = "success";
+        } catch (PDOException $e) {
+            $_SESSION['message'] = "Database Error: Could not update template. The 'broadcast_templates' table may be missing.";
+            $_SESSION['message_type'] = "danger";
+            error_log("Update Broadcast Template Error: " . $e->getMessage());
+        }
+        redirect("admin.php?tab=settings&sub_tab=broadcast");
+    }
+
+    if (isset($_POST['delete_broadcast_template'])) {
+        // The central CSRF check at the top of the POST block handles this.
+        try {
+            $stmt = $pdo->prepare("DELETE FROM broadcast_templates WHERE id = ?");
+            $stmt->execute([$_POST['template_id']]);
+            $_SESSION['message'] = "Broadcast template deleted.";
+            $_SESSION['message_type'] = "warning";
+        } catch (PDOException $e) {
+            $_SESSION['message'] = "Database Error: Could not delete template. The 'broadcast_templates' table may be missing.";
+            $_SESSION['message_type'] = "danger";
+            error_log("Delete Broadcast Template Error: " . $e->getMessage());
+        }
+        redirect("admin.php?tab=settings&sub_tab=broadcast");
     }
 
     if (isset($_POST['add_subject'])) {
         $name = $_POST['name'];
         $description = $_POST['description'];
+        $teacher_id = !empty($_POST['teacher_id']) ? $_POST['teacher_id'] : NULL;
+        $target_course = trim($_POST['target_course']);
+        $target_year_level = trim($_POST['target_year_level']);
 
         // Check if subject name already exists
         $check_name = $pdo->prepare("SELECT id FROM subjects WHERE name = ?");
@@ -126,10 +238,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $check_stmt->execute([$code]);
             } while ($check_stmt->rowCount() > 0);
 
-            $stmt = $pdo->prepare("INSERT INTO subjects (name, code, description, teacher_id) VALUES (?, ?, ?, NULL)");
-            $stmt->execute([$name, $code, $description]);
+            $stmt = $pdo->prepare("INSERT INTO subjects (name, code, description, teacher_id, target_course, target_year_level) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$name, $code, $description, $teacher_id, $target_course, $target_year_level]);
             $_SESSION['new_subject_id'] = $pdo->lastInsertId();
             $message = "Success: The subject '{$name}' has been added. System assigned code: {$code}.";
+            if ($teacher_id) {
+                $teacher_name_stmt = $pdo->prepare("SELECT first_name, last_name FROM users WHERE id = ?");
+                $teacher_name_stmt->execute([$teacher_id]);
+                $teacher = $teacher_name_stmt->fetch();
+                $message .= " Assigned to " . htmlspecialchars($teacher['first_name'] . ' ' . $teacher['last_name']) . ".";
+            }
             $message_type = "success";
         }
         $_SESSION['message'] = $message;
@@ -137,11 +255,75 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect("admin.php?tab=subjects");
     }
 
+    if (isset($_POST['broadcast_notification'])) {
+        $message = trim($_POST['message']);
+        $target_groups = $_POST['target_groups'] ?? [];
+        $sender_id = $_SESSION['user_id'];
+
+        if (empty($message) || empty($target_groups)) {
+            $_SESSION['message'] = "Message and at least one target audience are required.";
+            $_SESSION['message_type'] = "warning";
+        } else {
+            // Whitelist roles to prevent unexpected values
+            $allowed_roles = ['admin', 'teacher', 'student'];
+            $roles_to_query = array_intersect($target_groups, $allowed_roles);
+
+            if (empty($roles_to_query)) {
+                $_SESSION['message'] = "Invalid target audience selected.";
+                $_SESSION['message_type'] = "danger";
+            } else {
+                // Create placeholders for the IN clause
+                $placeholders = implode(',', array_fill(0, count($roles_to_query), '?'));
+                $query = "SELECT id FROM users WHERE role IN ($placeholders) AND status = 'active'";
+                
+                $stmt = $pdo->prepare($query);
+                $stmt->execute($roles_to_query);
+                $recipient_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+                if (!empty($recipient_ids)) {
+                    $pdo->beginTransaction();
+                    try {
+                        $sql = "INSERT INTO notifications (sender_id, recipient_id, message) VALUES (?, ?, ?)";
+                        $stmt = $pdo->prepare($sql);
+                        foreach ($recipient_ids as $recipient_id) {
+                            $stmt->execute([$sender_id, $recipient_id, $message]);
+                        }
+                        $pdo->commit();
+                        $_SESSION['message'] = "Broadcast sent to " . count($recipient_ids) . " recipients.";
+                        $_SESSION['message_type'] = "success";
+                    } catch (Exception $e) {
+                        $pdo->rollBack();
+                        $_SESSION['message'] = "An error occurred while sending the broadcast.";
+                        $_SESSION['message_type'] = "danger";
+                        error_log("Broadcast Error: " . $e->getMessage());
+                    }
+                } else {
+                    $_SESSION['message'] = "No active recipients found for the selected group(s).";
+                    $_SESSION['message_type'] = "info";
+                }
+            }
+        }
+        redirect("admin.php?tab=dashboard");
+    }
+
     if (isset($_POST['update_logo'])) {
-        if (isset($_FILES['logo_file']) && $_FILES['logo_file']['error'] == 0) {
+        if (isset($_FILES['logo_file']) && $_FILES['logo_file']['error'] === UPLOAD_ERR_OK) {
+            $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
+            $allowed_exts = ['jpg', 'jpeg', 'png', 'gif'];
+            $max_size = 2 * 1024 * 1024; // 2 MB
+
+            $file_type = mime_content_type($_FILES['logo_file']['tmp_name']);
+            $file_ext = strtolower(pathinfo($_FILES["logo_file"]["name"], PATHINFO_EXTENSION));
+
+            if (!in_array($file_type, $allowed_types) || !in_array($file_ext, $allowed_exts)) {
+                $_SESSION['message'] = "Error: Invalid file type. Only JPG, PNG, and GIF are allowed.";
+                $_SESSION['message_type'] = "danger";
+            } elseif ($_FILES['logo_file']['size'] > $max_size) {
+                $_SESSION['message'] = "Error: File size exceeds the 2MB limit.";
+                $_SESSION['message_type'] = "danger";
+            } else {
             $target_dir = "image/";
             if (!is_dir($target_dir)) mkdir($target_dir, 0777, true);
-            $file_ext = pathinfo($_FILES["logo_file"]["name"], PATHINFO_EXTENSION);
             $target_file = $target_dir . "system_logo_" . time() . "." . $file_ext;
             
             if (move_uploaded_file($_FILES["logo_file"]["tmp_name"], $target_file)) {
@@ -150,22 +332,221 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['message'] = "Logo updated successfully!";
                 $_SESSION['message_type'] = "success";
             } else {
-                $_SESSION['message'] = "Error uploading logo.";
+                $_SESSION['message'] = "Error: Could not move uploaded file.";
                 $_SESSION['message_type'] = "danger";
+            }
             }
         }
         redirect("admin.php?tab=settings");
     }
 
-    if (isset($_POST['update_weights'])) {
-        $keys = ['weight_lec', 'weight_lab', 'weight_lec_quiz', 'weight_lec_online', 'weight_lec_exam', 'weight_lab_att', 'weight_lab_cs', 'weight_lab_exam'];
-        foreach($keys as $key) {
+    if (isset($_POST['update_slideshow'])) {
+        $settings = [
+            'login_slideshow_enabled' => $_POST['login_slideshow_enabled'] ?? '1',
+            'login_slideshow_interval' => (int)($_POST['login_slideshow_interval'] ?? 6),
+            'login_slideshow_opacity' => (int)($_POST['login_slideshow_opacity'] ?? 30),
+            'login_form_glass' => $_POST['login_form_glass'] ?? '1',
+        ];
+        foreach ($settings as $key => $value) {
             $stmt = $pdo->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?");
-            $stmt->execute([$key, $_POST[$key], $_POST[$key]]);
+            $stmt->execute([$key, $value, $value]);
+        }
+
+        // Handle slideshow image uploads
+        $target_dir = "image/";
+        if (!is_dir($target_dir)) mkdir($target_dir, 0777, true);
+        for ($i = 1; $i <= 3; $i++) {
+            $file_key = "slideshow_image_$i";
+            if (isset($_FILES[$file_key]) && $_FILES[$file_key]['error'] === UPLOAD_ERR_OK) {
+                $allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+                $allowed_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+                $max_size = 5 * 1024 * 1024;
+
+                $file_type = mime_content_type($_FILES[$file_key]['tmp_name']);
+                $file_ext = strtolower(pathinfo($_FILES[$file_key]["name"], PATHINFO_EXTENSION));
+
+                if (!in_array($file_type, $allowed_types) || !in_array($file_ext, $allowed_exts)) {
+                    $_SESSION['message'] = "Error: Slideshow image $i - Invalid file type. Only JPG, PNG, GIF, WebP allowed.";
+                    $_SESSION['message_type'] = "danger";
+                    redirect("admin.php?tab=settings");
+                } elseif ($_FILES[$file_key]['size'] > $max_size) {
+                    $_SESSION['message'] = "Error: Slideshow image $i - File size exceeds 5MB limit.";
+                    $_SESSION['message_type'] = "danger";
+                    redirect("admin.php?tab=settings");
+                } else {
+                    $target_file = $target_dir . "login_slideshow_" . $i . "." . $file_ext;
+                    if (move_uploaded_file($_FILES[$file_key]["tmp_name"], $target_file)) {
+                        $stmt = $pdo->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+                        $stmt->execute(["login_slideshow_image_$i", $target_file, $target_file]);
+                    } else {
+                        $_SESSION['message'] = "Error: Could not move uploaded slideshow image $i.";
+                        $_SESSION['message_type'] = "danger";
+                        redirect("admin.php?tab=settings");
+                    }
+                }
+            }
+        }
+        $_SESSION['message'] = "Slideshow settings updated successfully!";
+        $_SESSION['message_type'] = "success";
+        redirect("admin.php?tab=settings");
+    }
+
+    if (isset($_POST['update_register_bg'])) {
+        $settings = [
+            'register_bg_type' => $_POST['register_bg_type'] ?? 'color',
+            'register_bg_color' => $_POST['register_bg_color'] ?? '#f1f5f9',
+            'register_bg_opacity' => (int)($_POST['register_bg_opacity'] ?? 100),
+        ];
+        foreach ($settings as $key => $value) {
+            $stmt = $pdo->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+            $stmt->execute([$key, $value, $value]);
+        }
+
+        // Handle registration background image upload
+        if (isset($_FILES['register_bg_image']) && $_FILES['register_bg_image']['error'] === UPLOAD_ERR_OK) {
+            $target_dir = "image/";
+            if (!is_dir($target_dir)) mkdir($target_dir, 0777, true);
+
+            $allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+            $allowed_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+            $max_size = 5 * 1024 * 1024;
+
+            $file_type = mime_content_type($_FILES['register_bg_image']['tmp_name']);
+            $file_ext = strtolower(pathinfo($_FILES["register_bg_image"]["name"], PATHINFO_EXTENSION));
+
+            if (!in_array($file_type, $allowed_types) || !in_array($file_ext, $allowed_exts)) {
+                $_SESSION['message'] = "Error: Invalid file type for registration background. Only JPG, PNG, GIF, WebP allowed.";
+                $_SESSION['message_type'] = "danger";
+                redirect("admin.php?tab=settings");
+            } elseif ($_FILES['register_bg_image']['size'] > $max_size) {
+                $_SESSION['message'] = "Error: Registration background image exceeds 5MB limit.";
+                $_SESSION['message_type'] = "danger";
+                redirect("admin.php?tab=settings");
+            } else {
+                $target_file = $target_dir . "register_bg." . $file_ext;
+                if (move_uploaded_file($_FILES["register_bg_image"]["tmp_name"], $target_file)) {
+                    $stmt = $pdo->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+                    $stmt->execute(['register_bg_image', $target_file, $target_file]);
+                } else {
+                    $_SESSION['message'] = "Error: Could not move uploaded registration background image.";
+                    $_SESSION['message_type'] = "danger";
+                    redirect("admin.php?tab=settings");
+                }
+            }
+        }
+        $_SESSION['message'] = "Registration background settings updated successfully!";
+        $_SESSION['message_type'] = "success";
+        redirect("admin.php?tab=settings");
+    }
+
+    if (isset($_POST['update_weights'])) {
+        $keys = ['weight_lec', 'weight_lab', 'weight_lec_quiz', 'weight_lec_online', 'weight_lec_exam', 'weight_lab_att', 'weight_lab_cs', 'weight_lab_exam', 'period_weight_prelim', 'period_weight_midterm', 'period_weight_prefinal', 'period_weight_final'];
+        foreach($keys as $key) {
+            $val = isset($_POST[$key]) ? (float)$_POST[$key] : 0;
+            if ($val < 0) $val = 0;
+            if ($val > 100) $val = 100;
+            $stmt = $pdo->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+            $stmt->execute([$key, $val, $val]);
         }
         $_SESSION['message'] = "Global grading policy updated successfully!";
         $_SESSION['message_type'] = "success";
         redirect("admin.php?tab=settings");
+    }
+
+    if (isset($_POST['enroll_students_import'])) {
+        $subject_id = (int)($_POST['subject_id'] ?? 0);
+        if (!$subject_id || !isset($_FILES['enroll_file']) || $_FILES['enroll_file']['error'] !== UPLOAD_ERR_OK) {
+            $_SESSION['message'] = "Error: Select a subject and a valid enrollment file.";
+            $_SESSION['message_type'] = "danger";
+            redirect("admin.php?tab=subjects");
+        }
+        $sub_stmt = $pdo->prepare("SELECT id, teacher_id FROM subjects WHERE id = ?");
+        $sub_stmt->execute([$subject_id]);
+        $sub = $sub_stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$sub) {
+            $_SESSION['message'] = "Error: Subject not found.";
+            $_SESSION['message_type'] = "danger";
+            redirect("admin.php?tab=subjects");
+        }
+        $assign_teacher = $sub['teacher_id'] ? (int)$sub['teacher_id'] : null;
+        $rows = readImportRows($_FILES['enroll_file']['tmp_name'], $_FILES['enroll_file']['name'] ?? '');
+        if (isset($rows['error'])) {
+            $_SESSION['message'] = "Error: " . $rows['error'];
+            $_SESSION['message_type'] = "danger";
+            redirect("admin.php?tab=subjects");
+        }
+        $enrolled = 0; $skipped = 0; $notfound = 0;
+        $ins = $pdo->prepare("INSERT IGNORE INTO grades (student_id, subject_id, teacher_id) VALUES (?, ?, ?)");
+        foreach ($rows as $row) {
+            $sid_raw = getImportValue($row, ['student_id','id','student_no','student_number','lrn']);
+            $uname = getImportValue($row, ['username','user','user_name']);
+            $email = getImportValue($row, ['email','email_address','e_mail']);
+            $student = null;
+            if ($sid_raw !== null && ctype_digit((string)$sid_raw)) {
+                $st = $pdo->prepare("SELECT id FROM users WHERE id = ? AND role = 'student' AND status = 'active'");
+                $st->execute([$sid_raw]); $student = $st->fetch(PDO::FETCH_ASSOC);
+            }
+            if (!$student && $uname !== null && $uname !== '') {
+                $st = $pdo->prepare("SELECT id FROM users WHERE username = ? AND role = 'student' AND status = 'active'");
+                $st->execute([$uname]); $student = $st->fetch(PDO::FETCH_ASSOC);
+            }
+            if (!$student && $email !== null && $email !== '') {
+                $st = $pdo->prepare("SELECT id FROM users WHERE email = ? AND role = 'student' AND status = 'active'");
+                $st->execute([$email]); $student = $st->fetch(PDO::FETCH_ASSOC);
+            }
+            if (!$student) { $notfound++; continue; }
+            $ins->execute([$student['id'], $subject_id, $assign_teacher]);
+            if ($ins->rowCount() > 0) $enrolled++; else $skipped++;
+        }
+        $_SESSION['message'] = "Enrollment import: {$enrolled} enrolled, {$skipped} already enrolled/skipped, {$notfound} not found.";
+        $_SESSION['message_type'] = $enrolled > 0 ? "success" : "warning";
+        redirect("admin.php?tab=subjects");
+    }
+
+    if (isset($_POST['reset_theme_colors'])) {
+        $theme_keys = ['theme_sidebar_bg', 'theme_primary_color', 'theme_body_bg', 'theme_header_bg', 'theme_text_color', 'theme_accent_color'];
+        $stmt = $pdo->prepare("DELETE FROM settings WHERE setting_key = ?");
+        foreach ($theme_keys as $key) {
+            $stmt->execute([$key]);
+        }
+        $_SESSION['message'] = "Theme colors reset to default.";
+        $_SESSION['message_type'] = "success";
+        redirect("admin.php?tab=settings&sub_tab=theme");
+    }
+
+    if (isset($_POST['update_theme_colors'])) {
+        $theme_keys = ['theme_sidebar_bg', 'theme_primary_color', 'theme_body_bg', 'theme_header_bg', 'theme_text_color', 'theme_accent_color'];
+        foreach ($theme_keys as $key) {
+            $value = $_POST[$key] ?? '';
+            if (preg_match('/^#[0-9a-fA-F]{6}$/', $value)) {
+                $stmt = $pdo->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+                $stmt->execute([$key, $value, $value]);
+            }
+        }
+        $_SESSION['message'] = "Theme colors updated successfully!";
+        $_SESSION['message_type'] = "success";
+        redirect("admin.php?tab=settings&sub_tab=theme");
+    }
+
+    if (isset($_POST['update_smtp_settings'])) {
+        $smtp_keys = [
+            'smtp_from_email',
+            'smtp_from_name',
+            'smtp_host',
+            'smtp_port',
+            'smtp_username',
+            'smtp_password',
+            'smtp_encryption'
+        ];
+        foreach ($smtp_keys as $key) {
+            $value = trim($_POST[$key] ?? '');
+            $stmt = $pdo->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+            $stmt->execute([$key, $value, $value]);
+        }
+
+        $_SESSION['message'] = "SMTP settings updated successfully!";
+        $_SESSION['message_type'] = "success";
+        redirect("admin.php?tab=settings&sub_tab=smtp");
     }
 
     if (isset($_POST['update_user'])) {
@@ -178,30 +559,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $course = $_POST['course'] ?? '';
         $year_level = $_POST['year_level'] ?? '';
         $phone = $_POST['phone_number'] ?? '';
+        $home_address = $_POST['home_address'] ?? '';
+        $city = $_POST['city'] ?? '';
+        $province = $_POST['province'] ?? '';
+        $guardian_name = $_POST['guardian_name'] ?? '';
+        $guardian_status = $_POST['guardian_status'] ?? '';
+        $guardian_phone = $_POST['guardian_phone'] ?? '';
+        $guardian_occupation = $_POST['guardian_occupation'] ?? '';
+        $guardian_address = $_POST['guardian_address'] ?? '';
 
-        // Check if username already exists (excluding current user)
+        // Fetch old data for audit log
+        $old_data_stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
+        $old_data_stmt->execute([$user_id]);
+        $old_data = $old_data_stmt->fetch(PDO::FETCH_ASSOC);
+
+        $errors = [];
+        $profile_picture_path = handleProfilePictureUpload($pdo, $_FILES['profile_picture'] ?? null, $user_id, $errors);
+
         $check_stmt = $pdo->prepare("SELECT id FROM users WHERE (username = ? OR email = ?) AND id != ?");
         $check_stmt->execute([$username, $email, $user_id]);
+        if ($check_stmt->rowCount() > 0) $errors[] = "Username or Email already exists!";
 
-        if ($check_stmt->rowCount() > 0) {
-            $_SESSION['message'] = "Error: Username or Email already exists!";
-            $_SESSION['message_type'] = "danger";
-        } else {
-            $stmt = $pdo->prepare("UPDATE users SET username = ?, first_name = ?, last_name = ?, email = ?, role = ?, course = ?, year_level = ?, phone_number = ? WHERE id = ?");
-            $stmt->execute([$username, $first_name, $last_name, $email, $role, $course, $year_level, $phone, $user_id]);
-            
+        if (empty($errors)) {
+            $sql_parts = ["username = ?", "first_name = ?", "last_name = ?", "email = ?", "role = ?", "course = ?", "year_level = ?", "phone_number = ?", "home_address = ?", "city = ?", "province = ?", "guardian_name = ?", "guardian_status = ?", "guardian_phone = ?", "guardian_occupation = ?", "guardian_address = ?"];
+            $params = [$username, $first_name, $last_name, $email, $role, $course, $year_level, $phone, $home_address, $city, $province, $guardian_name, $guardian_status, $guardian_phone, $guardian_occupation, $guardian_address];
+            if ($profile_picture_path) { $sql_parts[] = "profile_picture = ?"; $params[] = $profile_picture_path; }
+            $params[] = $user_id;
+            $sql = "UPDATE users SET " . implode(", ", $sql_parts) . " WHERE id = ?";
+            $pdo->prepare($sql)->execute($params);
+
+            // Log the audit trail
+            $new_data_stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
+            $new_data_stmt->execute([$user_id]);
+            $new_data = $new_data_stmt->fetch(PDO::FETCH_ASSOC);
+            $changes = [];
+            $fields_to_check = ['username', 'first_name', 'last_name', 'email', 'role', 'course', 'year_level', 'phone_number', 'home_address', 'city', 'province', 'guardian_name', 'guardian_status', 'guardian_phone', 'guardian_occupation', 'guardian_address'];
+            foreach ($fields_to_check as $field) {
+                if (($old_data[$field] ?? null) != ($new_data[$field] ?? null)) {
+                    $changes[] = "Changed {$field} from '{$old_data[$field]}' to '{$new_data[$field]}'.";
+                }
+            }
+            if ($profile_picture_path) $changes[] = "Profile picture was updated.";
+            if (!empty($changes)) logAudit($pdo, $_SESSION['user_id'], 'user_update', $user_id, implode("\n", $changes));
+
             $_SESSION['message'] = "Updated: Profile for user '{$username}' has been successfully modified.";
             $_SESSION['message_type'] = "success";
             $_SESSION['updated_user_id'] = $user_id;
+        } else {
+            $_SESSION['message'] = implode(" ", $errors);
+            $_SESSION['message_type'] = "danger";
         }
-
-        // Maintain search context after modification
-        $search_query = $_POST['search_context'] ?? ($_GET['search_user'] ?? '');
-        $redirect_url = "admin.php?tab=users";
-        if ($search_query) {
-            $redirect_url .= "&search_user=" . urlencode($search_query);
-        }
-        redirect($redirect_url);
+        redirect("admin.php?tab=users&search_user=" . urlencode($_POST['search_context'] ?? ''));
     }
 
     if (isset($_POST['update_password'])) {
@@ -230,6 +638,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $u_stmt->execute([$user_id]);
             $current_username = $u_stmt->fetchColumn();
 
+            logAudit($pdo, $_SESSION['user_id'], 'user_password_reset', $user_id, "Admin reset password for user '{$current_username}'.");
+
             $_SESSION['message'] = "Success: The password for '{$current_username}' has been successfully changed.";
             $_SESSION['message_type'] = "success";
             $_SESSION['updated_user_id'] = $user_id;
@@ -241,6 +651,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (Exception $e) {
             $_SESSION['message'] = $e->getMessage();
             $_SESSION['message_type'] = "danger";
+            // Security: Log detailed error, show generic message to user.
+            error_log("Admin Password Update Error: " . $e->getMessage());
+            $_SESSION['message'] = "An unexpected error occurred while updating the password.";
             redirect("admin.php?tab=users");
         }
     }
@@ -250,6 +663,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $name = $_POST['name'];
         $code = $_POST['code'];
         $description = $_POST['description'];
+        $teacher_id = !empty($_POST['teacher_id']) ? $_POST['teacher_id'] : NULL;
+        $target_course = trim($_POST['target_course']);
+        $target_year_level = trim($_POST['target_year_level']);
 
         // Check if subject code or name already exists (excluding current subject)
         $check_stmt = $pdo->prepare("SELECT id FROM subjects WHERE (code = ? OR name = ?) AND id != ?");
@@ -259,8 +675,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message = "Error: Subject name or code already exists!";
             $message_type = "danger";
         } else {
-            $stmt = $pdo->prepare("UPDATE subjects SET name = ?, code = ?, description = ? WHERE id = ?");
-            $stmt->execute([$name, $code, $description, $subject_id]);
+            $stmt = $pdo->prepare("UPDATE subjects SET name = ?, code = ?, description = ?, teacher_id = ?, target_course = ?, target_year_level = ? WHERE id = ?");
+            $stmt->execute([$name, $code, $description, $teacher_id, $target_course, $target_year_level, $subject_id]);
             $message = "Subject Modified: Details for '{$name}' ({$code}) have been saved.";
             $message_type = "success";
             $_SESSION['message'] = $message;
@@ -268,6 +684,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect("admin.php?tab=subjects");
         }
     }
+
+    if (isset($_POST['finalize_subject'])) {
+        $subject_id = $_POST['subject_id'];
+        $stmt = $pdo->prepare("UPDATE subjects SET status = 'finalized' WHERE id = ?");
+        $stmt->execute([$subject_id]);
+
+        // Log audit
+        $sub_stmt = $pdo->prepare("SELECT name FROM subjects WHERE id = ?");
+        $sub_stmt->execute([$subject_id]);
+        $subject_name = $sub_stmt->fetchColumn();
+        logAudit($pdo, $_SESSION['user_id'], 'subject_finalize', $subject_id, "Finalized subject '{$subject_name}'. Grades are now locked.");
+
+        $_SESSION['message'] = "Subject has been finalized and grades are now locked.";
+        $_SESSION['message_type'] = "success";
+        redirect("admin.php?tab=subjects");
+    }
+
+    if (isset($_POST['reopen_subject'])) {
+        $subject_id = $_POST['subject_id'];
+        $stmt = $pdo->prepare("UPDATE subjects SET status = 'open' WHERE id = ?");
+        $stmt->execute([$subject_id]);
+
+        // Log audit
+        $sub_stmt = $pdo->prepare("SELECT name FROM subjects WHERE id = ?");
+        $sub_stmt->execute([$subject_id]);
+        $subject_name = $sub_stmt->fetchColumn();
+        logAudit($pdo, $_SESSION['user_id'], 'subject_reopen', $subject_id, "Re-opened subject '{$subject_name}'. Grades are now editable.");
+
+        $_SESSION['message'] = "Subject has been re-opened for grade entry.";
+        $_SESSION['message_type'] = "info";
+        redirect("admin.php?tab=subjects");
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_subject') {
+    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+        $_SESSION['message'] = "Invalid form submission. Please try again.";
+        $_SESSION['message_type'] = "danger";
+    } else {
+        $subject_id = $_POST['subject_id_admin'];
+        // Admin has authority, no ownership check needed, but we still use the function
+        $result = deleteSubject($pdo, $subject_id);
+        if ($result === true) {
+            $_SESSION['message'] = "Subject and all related data have been permanently deleted.";
+            $_SESSION['message_type'] = "success";
+        } else {
+            $_SESSION['message'] = $result;
+            $_SESSION['message_type'] = "danger";
+        }
+    }
+    redirect("admin.php?tab=subjects");
 }
 
 // Handle session messages after redirect
@@ -278,13 +745,22 @@ if (isset($_SESSION['message'])) {
 }
 
 // Handle delete actions
-if (isset($_GET['action']) && isset($_GET['id'])) {
+if (isset($_GET['action'])) {
+    // Central CSRF Check for all GET-based actions
+    if (!isset($_GET['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_GET['csrf_token'])) {
+        $_SESSION['message'] = "Invalid action link (CSRF token mismatch). Please try again.";
+        $_SESSION['message_type'] = "danger";
+        redirect("admin.php?tab=" . ($active_tab ?? 'dashboard'));
+    }
+
     $action = $_GET['action'];
-    $id = $_GET['id'];
+    $id = $_GET['id'] ?? null;
+    $log_id = $_GET['log_id'] ?? null;
     $search_user = $_GET['search_user'] ?? '';
 
     switch ($action) {
         case 'archive_user':
+            if (!$id) { $_SESSION['message'] = "Invalid request."; $_SESSION['message_type'] = "danger"; redirect("admin.php?tab=users"); }
             // Security Check: Prevent archiving the last remaining active administrator
             $check_role = $pdo->prepare("SELECT role FROM users WHERE id = ?");
             $check_role->execute([$id]);
@@ -301,6 +777,11 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
 
             $result = archiveUser($pdo, $id);
             if ($result === true) {
+                // Log audit
+                $u_stmt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
+                $u_stmt->execute([$id]);
+                $username_archived = $u_stmt->fetchColumn();
+                logAudit($pdo, $_SESSION['user_id'], 'user_archive', $id, "Archived user '{$username_archived}'.");
                 $message = "User Account Archived: The user has been moved to the backup archive.";
                 $message_type = "success";
             } else {
@@ -316,8 +797,14 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
             break;
 
         case 'restore_user':
+            if (!$id) { $_SESSION['message'] = "Invalid request."; $_SESSION['message_type'] = "danger"; redirect("admin.php?tab=archive"); }
             $result = restoreUser($pdo, $id);
             if ($result === true) {
+                // Log audit
+                $u_stmt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
+                $u_stmt->execute([$id]);
+                $username_restored = $u_stmt->fetchColumn();
+                logAudit($pdo, $_SESSION['user_id'], 'user_restore', $id, "Restored user '{$username_restored}' from archive.");
                 $message = "Account Restored: The user is now active again.";
                 $message_type = "success";
             } else {
@@ -329,8 +816,15 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
             break;
 
         case 'delete_user':
+            if (!$id) { $_SESSION['message'] = "Invalid request."; $_SESSION['message_type'] = "danger"; redirect("admin.php?tab=archive"); }
+            // Get username before deleting for the log
+            $u_stmt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
+            $u_stmt->execute([$id]);
+            $username_deleted = $u_stmt->fetchColumn();
+
             $result = deleteUser($pdo, $id);
             if ($result === true) {
+                logAudit($pdo, $_SESSION['user_id'], 'user_purge', $id, "Permanently deleted (purged) user '{$username_deleted}' (ID: {$id}).");
                 $message = "User Purged: Account and data have been permanently removed.";
                 $message_type = "success";
             } else {
@@ -341,35 +835,63 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
             redirect("admin.php?tab=archive");
             break;
 
-        case 'delete_student':
-            // This now archives via the updated function in functions.php
-            $result = deleteStudent($pdo, $id);
-            if ($result === true) {
-                $message = "Student Archived: Grade records are preserved in the backup archive.";
-                $message_type = "success";
-            } else {
-                $message = $result;
-                $message_type = "danger";
+        case 'revert_update':
+            if (!$log_id) {
+                $_SESSION['message'] = "Invalid request: Missing log ID.";
+                $_SESSION['message_type'] = "danger";
+                redirect("admin.php?tab=audit");
             }
-            $_SESSION['message'] = $message; $_SESSION['message_type'] = $message_type;
 
-            $search_query = $_GET['search_user'] ?? '';
-            $redirect_url = "admin.php?tab=users";
-            if ($search_query) $redirect_url .= "&search_user=" . urlencode($search_query);
-            redirect($redirect_url);
-            break;
+            $log_stmt = $pdo->prepare("SELECT * FROM audit_log WHERE id = ? AND action = 'user_update'");
+            $log_stmt->execute([$log_id]);
+            $log = $log_stmt->fetch(PDO::FETCH_ASSOC);
 
-        case 'delete_subject':
-            $result = deleteSubject($pdo, $id);
-            if ($result === true) {
-                $message = "Subject Removed: The subject and related grades have been deleted.";
-                $message_type = "success";
-            } else {
-                $message = $result;
-                $message_type = "danger";
+            if (!$log || !$log['target_user_id']) {
+                $_SESSION['message'] = "Cannot revert: The log is invalid or the target user no longer exists.";
+                $_SESSION['message_type'] = "warning";
+                redirect("admin.php?tab=audit");
             }
-            $_SESSION['message'] = $message; $_SESSION['message_type'] = $message_type;
-            redirect("admin.php?tab=subjects");
+
+            $target_user_id = $log['target_user_id'];
+            $changes = explode("\n", $log['details']);
+            $revert_sql_parts = [];
+            $revert_params = [];
+            $reverted_changes_details = [];
+
+            foreach ($changes as $change_line) {
+                if (preg_match("/^Changed (\w+) from '(.*?)' to '(.*?)'./", trim($change_line), $matches)) {
+                    $field = $matches[1];
+                    $old_value = $matches[2];
+                    $allowed_fields = ['username', 'first_name', 'last_name', 'email', 'role', 'course', 'year_level', 'phone_number'];
+                    if (in_array($field, $allowed_fields)) {
+                        $revert_sql_parts[] = "`$field` = ?";
+                        $revert_params[] = $old_value;
+                        $reverted_changes_details[] = "Reverted `$field` to '{$old_value}'.";
+                    }
+                }
+            }
+
+            if (empty($revert_sql_parts)) {
+                $_SESSION['message'] = "No revertible changes found in this log entry (e.g., only profile picture was updated).";
+                $_SESSION['message_type'] = "info";
+            } else {
+                try {
+                    $pdo->beginTransaction();
+                    $revert_params[] = $target_user_id;
+                    $sql = "UPDATE users SET " . implode(", ", $revert_sql_parts) . " WHERE id = ?";
+                    $pdo->prepare($sql)->execute($revert_params);
+
+                    $revert_details_string = "Reverted changes from log ID #{$log_id}:\n" . implode("\n", $reverted_changes_details);
+                    logAudit($pdo, $_SESSION['user_id'], 'user_update_revert', $target_user_id, $revert_details_string);
+
+                    $pdo->commit();
+                    $_SESSION['message'] = "Successfully reverted user update.";
+                    $_SESSION['message_type'] = "success";
+                } catch (Exception $e) {
+                    $pdo->rollBack(); $_SESSION['message'] = "An error occurred during the revert operation."; $_SESSION['message_type'] = "danger"; error_log("Revert Error: " . $e->getMessage());
+                }
+            }
+            redirect("admin.php?tab=audit");
             break;
     }
 }
@@ -393,17 +915,31 @@ if ($search_user) {
     array_push($users_params, "%$search_user%", "%$search_user%", "%$search_user%", "%$search_user%");
 }
 
-// Fetch Admins & Teachers
+// Fetch Registrars & Teachers
 $staff_users_stmt = $pdo->prepare("SELECT * FROM users WHERE status = ? AND role IN ('admin', 'teacher') $search_sql ORDER BY role, first_name ASC");
 $staff_users_stmt->execute($users_params);
 $staff_users = $staff_users_stmt->fetchAll();
+
+// NEW: Split staff into roles to avoid redundant loops in the view
+$admins = [];
+$teachers = [];
+foreach ($staff_users as $user) {
+    if ($user['role'] === 'admin') {
+        $admins[] = $user;
+    } else if ($user['role'] === 'teacher') {
+        $teachers[] = $user;
+    }
+}
 // Fetch Students (Filtered by Search)
-$students_stmt = $pdo->prepare("SELECT u.*, GROUP_CONCAT(DISTINCT s.name SEPARATOR ', ') as enrolled_subjects 
-    FROM users u 
-    LEFT JOIN grades g ON u.id = g.student_id 
-    LEFT JOIN subjects s ON g.subject_id = s.id 
-    WHERE u.status = ? AND u.role = 'student' $search_sql 
-    GROUP BY u.id
+$students_stmt = $pdo->prepare("
+    SELECT u.*, (
+        SELECT GROUP_CONCAT(DISTINCT s.name SEPARATOR ', ')
+        FROM grades g
+        JOIN subjects s ON g.subject_id = s.id
+        WHERE g.student_id = u.id
+    ) as enrolled_subjects
+    FROM users u
+    WHERE u.status = ? AND u.role = 'student' $search_sql
     ORDER BY u.year_level DESC, u.course ASC, u.last_name ASC");
 $students_stmt->execute($users_params);
 $all_students = $students_stmt->fetchAll();
@@ -415,8 +951,226 @@ $archived_users_stmt = $pdo->prepare("SELECT * FROM users WHERE status = ? $sear
 $archived_users_stmt->execute($archive_params);
 $archived_users = $archived_users_stmt->fetchAll();
 
-// Fetch Subjects (This is what your sidebar needs)
-$all_subjects = $pdo->query("SELECT * FROM subjects ORDER BY name ASC")->fetchAll();
+// Fetch current registrar's full info for profile settings
+$admin_info_stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
+$admin_info_stmt->execute([$_SESSION['user_id']]);
+$admin_info = $admin_info_stmt->fetch(PDO::FETCH_ASSOC);
+
+// Fetch broadcast templates for the editor and modal
+$broadcast_templates = [];
+try {
+    $broadcast_templates_stmt = $pdo->query("SELECT * FROM broadcast_templates ORDER BY FIELD(role_access, 'admin', 'all', 'teacher'), title");
+    $broadcast_templates = $broadcast_templates_stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log("Broadcast templates table may not exist: " . $e->getMessage());
+}
+
+// --- One-time seeding of default broadcast templates ---
+try {
+    $default_templates = [
+        // Admin templates
+        ['Grade Release', 'All grades for the current period have been released. Please check your portal.', 'admin'],
+        ['Enrollment Open', 'The enrollment period for the upcoming semester is now open. Please complete your enrollment by [Date].', 'admin'],
+        ['Holiday', 'Please be advised that there will be no classes on [Date] in observance of [Holiday].', 'admin'],
+        ['Maintenance', 'The portal will be down for scheduled maintenance on [Date] at [Time]. We apologize for any inconvenience.', 'admin'],
+        // Teacher templates
+        ['Class Canceled', 'Please be advised that our class for today, [Date], has been canceled. An asynchronous activity will be provided.', 'teacher'],
+        ['Assignment Reminder', 'This is a reminder that your assignment on [Topic] is due on [Date]. Please submit it on time.', 'teacher'],
+        ['Exam Schedule', 'Heads up! Our upcoming [Period] exam is scheduled for [Date] at [Time].', 'teacher'],
+        ['Consultation Hours', 'My consultation hours for this week are on [Day] from [Time Start] to [Time End]. Feel free to approach me with any concerns.', 'teacher'],
+        // All Users templates
+        ['General Announcement', 'Important: Please check the school website for recent announcements regarding [Topic].', 'all'],
+        ['System Update', 'The system will undergo a minor update on [Date] at [Time]. Expect brief interruptions.', 'all']
+    ];
+
+    $insert_stmt = $pdo->prepare("INSERT INTO broadcast_templates (title, message, role_access) SELECT ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM broadcast_templates WHERE title = ?)");
+    
+    foreach ($default_templates as $template) {
+        $insert_stmt->execute([$template[0], $template[1], $template[2], $template[0]]);
+    }
+} catch (PDOException $e) { error_log("Default broadcast template seeding failed: " . $e->getMessage()); }
+
+// Fetch data for Audit Log filters
+$all_admins_for_filter = [];
+$distinct_actions = [];
+try {
+    $all_admins_stmt = $pdo->query("SELECT id, first_name, last_name FROM users WHERE role = 'admin' AND status = 'active' ORDER BY last_name, first_name");
+    $all_admins_for_filter = $all_admins_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $distinct_actions_stmt = $pdo->query("SELECT DISTINCT action FROM audit_log ORDER BY action ASC");
+    $distinct_actions = $distinct_actions_stmt->fetchAll(PDO::FETCH_COLUMN);
+} catch (PDOException $e) {
+    // Silently fail if audit_log table doesn't exist
+    error_log("Audit Log Filter Data Fetch Error: " . $e->getMessage());
+}
+
+// Get filter parameters for Audit Log
+$audit_search = $_GET['audit_search'] ?? '';
+$audit_action = $_GET['audit_action'] ?? '';
+$audit_admin_id = $_GET['audit_admin_id'] ?? '';
+$audit_start_date = $_GET['audit_start_date'] ?? '';
+$audit_end_date = $_GET['audit_end_date'] ?? '';
+ 
+// Pagination for Audit Log
+$audit_page = isset($_GET['audit_page']) ? (int)$_GET['audit_page'] : 1;
+if ($audit_page < 1) $audit_page = 1;
+$audit_per_page = 25; // Records per page
+$audit_offset = ($audit_page - 1) * $audit_per_page;
+ 
+// Build WHERE clause and params for both count and data queries
+$audit_where_clauses = [];
+$audit_params = [];
+ 
+if ($audit_search) {
+    // Using MATCH...AGAINST for the 'details' column requires a FULLTEXT index.
+    // This is significantly faster than LIKE '%...%' on large text fields.
+    $audit_where_clauses[] = "(MATCH(al.details) AGAINST(? IN BOOLEAN MODE) OR target.username LIKE ?)";
+    // Add wildcards for boolean mode to mimic LIKE '%...%' behavior.
+    $audit_params[] = "*" . $audit_search . "*";
+    $audit_params[] = "%$audit_search%";
+}
+if ($audit_action) { $audit_where_clauses[] = "al.action = ?"; $audit_params[] = $audit_action; }
+if ($audit_admin_id) { $audit_where_clauses[] = "al.actor_id = ?"; $audit_params[] = $audit_admin_id; }
+if ($audit_start_date) { $audit_where_clauses[] = "al.timestamp >= ?"; $audit_params[] = $audit_start_date . ' 00:00:00'; }
+if ($audit_end_date) { $audit_where_clauses[] = "al.timestamp <= ?"; $audit_params[] = $audit_end_date . ' 23:59:59'; }
+ 
+$where_sql_part = "";
+if (!empty($audit_where_clauses)) {
+    $where_sql_part = " WHERE " . implode(" AND ", $audit_where_clauses);
+}
+ 
+// Fetch Audit Logs (with error handling and filtering)
+$audit_logs = [];
+$total_audit_logs = 0;
+$total_audit_pages = 0;
+ 
+try {
+    // Count total records for pagination
+    $count_sql = "SELECT COUNT(al.id) FROM audit_log al LEFT JOIN users target ON al.target_user_id = target.id" . $where_sql_part;
+    $count_stmt = $pdo->prepare($count_sql);
+    $count_stmt->execute($audit_params);
+    $total_audit_logs = $count_stmt->fetchColumn();
+    $total_audit_pages = ceil($total_audit_logs / $audit_per_page);
+ 
+    // Fetch the records for the current page
+    $audit_base_sql = "
+        SELECT al.*, actor.first_name as admin_first, actor.last_name as admin_last,
+               target.first_name as target_first, target.last_name as target_last, target.username as target_username
+        FROM audit_log al
+        JOIN users actor ON al.actor_id = actor.id
+        LEFT JOIN users target ON al.target_user_id = target.id
+    " . $where_sql_part . " ORDER BY al.timestamp DESC LIMIT ? OFFSET ?";
+ 
+    $audit_logs_stmt = $pdo->prepare($audit_base_sql);
+ 
+    // Bind parameters one by one to set types
+    $param_index = 1;
+    foreach ($audit_params as $param) { $audit_logs_stmt->bindValue($param_index++, $param); }
+    $audit_logs_stmt->bindValue($param_index++, $audit_per_page, PDO::PARAM_INT);
+    $audit_logs_stmt->bindValue($param_index++, $audit_offset, PDO::PARAM_INT);
+ 
+    $audit_logs_stmt->execute();
+    $audit_logs = $audit_logs_stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) { error_log("Audit Log Fetch Error (admin.php): " . $e->getMessage()); }
+
+// Fetch recent audit logs for dashboard widget
+$recent_audit_logs = [];
+try {
+    $recent_audit_logs_stmt = $pdo->query("
+        SELECT 
+            al.*, 
+            actor.first_name as admin_first, actor.last_name as admin_last,
+            target.username as target_username
+        FROM audit_log al
+        JOIN users actor ON al.actor_id = actor.id
+        LEFT JOIN users target ON al.target_user_id = target.id
+        ORDER BY al.timestamp DESC
+        LIMIT 5
+    ");
+    $recent_audit_logs = $recent_audit_logs_stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    // Silently fail if table doesn't exist, the widget will just be empty.
+    error_log("Dashboard Audit Widget Error: " . $e->getMessage());
+}
+
+// --- Data for Broadcast History Tab ---
+$broadcast_history = [];
+$total_broadcasts = 0;
+$broadcast_page = 1;
+$broadcast_per_page = 15;
+$total_broadcast_pages = 0;
+
+if ($active_tab === 'broadcast-history') {
+    $broadcast_page = isset($_GET['broadcast_page']) ? (int)$_GET['broadcast_page'] : 1;
+    if ($broadcast_page < 1) $broadcast_page = 1;
+    $broadcast_offset = ($broadcast_page - 1) * $broadcast_per_page;
+
+    // Count total unique broadcasts sent by admins
+    // A "broadcast" is approximated by a unique message sent by an admin at a specific minute.
+    // This is a heuristic because the current schema doesn't have a dedicated 'broadcasts' table.
+    $total_broadcast_stmt = $pdo->prepare("
+        SELECT COUNT(DISTINCT CONCAT(n.sender_id, n.message, DATE_FORMAT(n.created_at, '%Y-%m-%d %H:%i')))
+        FROM notifications n
+        JOIN users u ON n.sender_id = u.id
+        WHERE u.role = 'admin'
+    ");
+    $total_broadcast_stmt->execute();
+    $total_broadcasts = $total_broadcast_stmt->fetchColumn();
+    $total_broadcast_pages = ceil($total_broadcasts / $broadcast_per_page);
+
+    // Fetch paginated broadcast history
+    // Group by sender, message, and a minute-level timestamp to represent a single broadcast event.
+    $broadcast_stmt = $pdo->prepare("
+        SELECT 
+            n.sender_id,
+            u.first_name as sender_first,
+            u.last_name as sender_last,
+            n.message,
+            MIN(n.created_at) as created_at,
+            COUNT(n.id) as recipient_count,
+            GROUP_CONCAT(DISTINCT r.role ORDER BY r.role SEPARATOR ', ') as target_roles
+        FROM notifications n
+        JOIN users u ON n.sender_id = u.id
+        JOIN users r ON n.recipient_id = r.id
+        WHERE u.role = 'admin'
+        GROUP BY n.sender_id, n.message, DATE_FORMAT(n.created_at, '%Y-%m-%d %H:%i')
+        ORDER BY created_at DESC
+        LIMIT ? OFFSET ?
+    ");
+    $broadcast_stmt->bindValue(1, $broadcast_per_page, PDO::PARAM_INT);
+    $broadcast_stmt->bindValue(2, $broadcast_offset, PDO::PARAM_INT);
+    $broadcast_stmt->execute();
+    $broadcast_history = $broadcast_stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Fetch Subjects with enrolled students for the 'subjects' tab accordion
+$subjects_with_enrollments = [];
+$enrollments_stmt = $pdo->prepare("
+    SELECT 
+        s.id as subject_id, s.name as subject_name, s.code as subject_code, s.description, s.teacher_id,
+        s.target_course, s.target_year_level, s.status,
+        t.first_name as teacher_first, t.last_name as teacher_last,
+        u.id as student_id, u.first_name, u.last_name, u.username, u.course, u.year_level
+    FROM subjects s
+    LEFT JOIN grades g ON s.id = g.subject_id
+    LEFT JOIN users u ON g.student_id = u.id AND u.role = 'student' AND u.status = 'active'
+    LEFT JOIN users t ON s.teacher_id = t.id
+    ORDER BY s.name, u.last_name, u.first_name
+");
+$enrollments_stmt->execute();
+$all_enrollments = $enrollments_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+foreach ($all_enrollments as $enrollment) {
+    $subject_id = $enrollment['subject_id'];
+    if (!isset($subjects_with_enrollments[$subject_id])) {
+        // On first encounter, store all subject details
+        $subjects_with_enrollments[$subject_id] = $enrollment;
+        $subjects_with_enrollments[$subject_id]['students'] = [];
+    }
+    if ($enrollment['student_id']) {
+        $subjects_with_enrollments[$subject_id]['students'][] = $enrollment;
+    }
+}
 
 // Fetch Grade Weights for labels
 $weights = getGradeWeights($pdo);
@@ -428,7 +1182,7 @@ $recent_students = $pdo->query("SELECT * FROM users WHERE role = 'student' AND s
 
 // Assign variables for use in templates
 $users = $staff_users;
-$subjects = $all_subjects;
+$subjects = $subjects_with_enrollments;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -439,169 +1193,14 @@ $subjects = $all_subjects;
     <title>Admin Dashboard - Student Grade Management</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --sidebar-width: 250px;
-            --sidebar-bg: #0f172a;
-            --accent-color: #6366f1;
-        }
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
-
-        .sidebar {
-            background: var(--sidebar-bg);
-            color: white;
-            min-height: 100vh;
-            padding: 0;
-            width: var(--sidebar-width);
-            position: fixed;
-            left: 0;
-            top: 0;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 1000;
-        }
-        .sidebar.collapsed {
-            left: calc(-1 * var(--sidebar-width));
-        }
-        .main-content {
-            margin-left: var(--sidebar-width);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            width: calc(100% - var(--sidebar-width));
-        }
-        .main-content.expanded {
-            margin-left: 0;
-            width: 100%;
-        }
-        .sidebar .nav-link {
-            color: white;
-            padding: 1rem 1.5rem;
-            border-left: 4px solid transparent;
-            transition: all 0.3s ease;
-            opacity: 0.85;
-            margin: 4px 12px;
-            border-radius: 8px;
-        }
-
-        .sidebar .nav-link:hover:not(.active) {
-            background: rgba(255, 255, 255, 0.15);
-            transform: translateX(5px);
-            opacity: 1;
-        }
-
-        .sidebar .nav-link.active {
-            background: var(--accent-color);
-            border-left-color: #fff;
-            font-weight: bold;
-            opacity: 1;
-        }
-
-        .stat-card {
-            border-radius: 15px;
-            border: none;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-5px);
-        }
-
-        .grad-adm-1 { background: #4f46e5; }
-        .grad-adm-2 { background: #e11d48; }
-        .grad-adm-3 { background: #f59e0b; }
-        .grad-adm-4 { background: #0891b2; }
-
-        .toggle-btn {
-            cursor: pointer;
-            font-size: 1.5rem;
-            margin-right: 15px;
-        }
-        .sidebar-overlay {
-            cursor: pointer;
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 999;
-            transition: opacity 0.4s ease;
-        }
-        .modal-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        @media (max-width: 992px) {
-            .sidebar { left: calc(-1 * var(--sidebar-width)); }
-            .sidebar.active { left: 0; }
-            .main-content { margin-left: 0; width: 100%; }
-            .sidebar-overlay.active { display: block; }
-        }
-        .password-toggle {
-            cursor: pointer;
-            transition: color 0.3s;
-        }
-
-        .password-toggle:hover {
-            color: #667eea !important;
-        }
-
-        .toast-container { z-index: 1060; }
-        /* Live Search Styles */
-        #searchResultsDropdown {
-            top: 100%;
-            left: 0;
-            right: 0;
-            z-index: 1050;
-            max-height: 300px;
-            overflow-y: auto;
-            transition: opacity 0.3s ease, transform 0.3s ease;
-            opacity: 1;
-        }
-        #searchResultsDropdown .list-group-item {
-            border-radius: 0;
-            transition: background 0.2s;
-        }
-
-        /* Enhanced Table Responsiveness */
-        .table thead th, .table tbody td { white-space: nowrap; }
-
-        /* Navbar fixes for text compression */
-        .navbar { flex-wrap: nowrap; min-height: 64px; }
-        .navbar-brand { 
-            white-space: nowrap; 
-            font-weight: 700;
-            letter-spacing: -0.025em;
-            font-size: 1.1rem !important;
-        }
-
-        @media (max-width: 576px) {
-            .navbar-brand { font-size: 1rem !important; }
-            .stat-card h4 { font-size: 1.25rem; }
-            .px-4 { padding-left: 1rem !important; padding-right: 1rem !important; }
-            .card-body { padding: 1rem; }
-        }
-
-        @media (max-width: 360px) {
-            .navbar-brand { font-size: 0.85rem !important; }
-            .sidebar-overlay.active { display: block; }
-            .btn-sm { padding: 0.25rem 0.4rem; font-size: 0.75rem; }
-            .table { font-size: 0.8rem; }
-        }
-
-        /* Glow Highlight for newly added rows */
-        .row-glow-highlight {
-            animation: tableRowGlow 4s ease-out;
-        }
-        @keyframes tableRowGlow {
-            0% { background-color: rgba(99, 102, 241, 0.3); }
-            100% { background-color: transparent; }
-        }
-    </style>
+    <link href="css/portal.css" rel="stylesheet">
+    <?php outputThemeColors($pdo); ?>
 </head>
  
-<body>
+<body class="d-flex flex-column min-vh-100">
     <!-- Toast Notification Container -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
     <div class="toast-container position-fixed top-0 end-0 p-3">
@@ -619,8 +1218,8 @@ $subjects = $all_subjects;
             <div class="sidebar" id="sidebar">
                 <div class="d-flex flex-column p-3">
                     <div class="text-center mb-4">
-                        <img src="<?php echo getSystemSetting($pdo, 'system_logo', 'image/aclc.jpg'); ?>" alt="Logo" style="width: 80px; height: 80px; margin-bottom: 10px; border-radius: 50%; object-fit: cover;">
-                        <h5>Grade Management</h5>
+                        <img src="<?php echo getSystemSetting($pdo, 'system_logo', 'image/aclc.jpg'); ?>" alt="Logo" class="sidebar-logo mb-2">
+                        <h5>Grade Management</h5> 
                         <small>Administrator Panel</small>
                     </div>
 
@@ -640,10 +1239,15 @@ $subjects = $all_subjects;
                                 <i class="fas fa-book me-2"></i>Subjects
                             </a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link <?php echo $active_tab === 'archive' ? 'active' : ''; ?>" href="admin.php?tab=archive">
-                                <i class="fas fa-archive me-2"></i>Archive <span class="badge bg-light text-dark ms-2"><?php echo $total_archived; ?></span>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle <?php echo in_array($active_tab, ['archive', 'broadcast-history', 'audit']) ? 'active' : ''; ?>" href="#" id="moreDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-ellipsis-h me-2"></i>More
                             </a>
+                            <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="moreDropdown">
+                                <li><a class="dropdown-item <?php echo $active_tab === 'archive' ? 'active' : ''; ?>" href="admin.php?tab=archive"><i class="fas fa-archive me-2"></i>Archive <span class="badge bg-light text-dark ms-2"><?php echo $total_archived; ?></span></a></li>
+                                <li><a class="dropdown-item <?php echo $active_tab === 'broadcast-history' ? 'active' : ''; ?>" href="admin.php?tab=broadcast-history"><i class="fas fa-mail-bulk me-2"></i>Broadcast History</a></li>
+                                <li><a class="dropdown-item <?php echo $active_tab === 'audit' ? 'active' : ''; ?>" href="admin.php?tab=audit"><i class="fas fa-history me-2"></i>Audit Log</a></li>
+                            </ul>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link <?php echo $active_tab === 'settings' ? 'active' : ''; ?>" href="admin.php?tab=settings">
@@ -651,9 +1255,12 @@ $subjects = $all_subjects;
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="logout.php" onclick="return confirm('Are you sure you want to logout?')">
-                                <i class="fas fa-sign-out-alt me-2"></i>Logout
-                            </a>
+                            <form action="logout.php" method="post" id="logoutForm" class="d-inline">
+                                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                <a class="nav-link" href="#" onclick="if(confirm('Are you sure you want to logout?')) document.getElementById('logoutForm').submit(); return false;">
+                                    <i class="fas fa-sign-out-alt me-2"></i>Logout
+                                </a>
+                            </form>
                         </li>
                     </ul>
                 </div>
@@ -670,14 +1277,17 @@ $subjects = $all_subjects;
                     <!-- Dashboard Tab -->
                     <div class="tab-pane fade <?php echo $active_tab === 'dashboard' ? 'show active' : ''; ?>" id="dashboard">
                         <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h2>Admin Dashboard</h2>
-                            <span>Welcome, <?php echo $_SESSION['first_name']; ?>!</span>
+                            <div>
+                                <h2>Admin Dashboard</h2>
+                                <span>Welcome, <?php echo htmlspecialchars($_SESSION['first_name']); ?>!</span>
+                            </div>
+                            <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#broadcastNotificationModal"><i class="fas fa-bullhorn me-2"></i>Broadcast Notification</button>
                         </div>
 
                         <!-- Statistics Cards -->
                         <div class="row mb-4">
-                            <div class="col-sm-4 mb-3">
-                                <div class="card stat-card grad-adm-1 text-white">
+                            <div class="col-lg-3 col-md-6 mb-3">
+                                <div class="stat-box grad-blue">
                                     <div class="card-body">
                                         <div class="d-flex justify-content-between">
                                             <div>
@@ -689,8 +1299,8 @@ $subjects = $all_subjects;
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-sm-4 mb-3">
-                                <div class="card stat-card grad-adm-4 text-white">
+                            <div class="col-lg-3 col-md-6 mb-3">
+                                <div class="stat-box grad-teal">
                                     <div class="card-body">
                                         <div class="d-flex justify-content-between">
                                             <div>
@@ -702,8 +1312,21 @@ $subjects = $all_subjects;
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-sm-4 mb-3">
-                                <div class="card stat-card grad-adm-2 text-white">
+                            <div class="col-lg-3 col-md-6 mb-3">
+                                <div class="stat-box grad-orange">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between">
+                                            <div>
+                                                <h4><?php echo $total_admins; ?></h4>
+                                                <p>Total Admins</p>
+                                            </div>
+                                            <i class="fas fa-user-shield fa-2x"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-lg-3 col-md-6 mb-3">
+                                <div class="stat-box grad-red">
                                     <div class="card-body">
                                         <div class="d-flex justify-content-between">
                                             <div>
@@ -721,7 +1344,7 @@ $subjects = $all_subjects;
                         <div class="row mb-4">
                             <div class="col-md-4">
                                 <div class="card">
-                                    <div class="card-header">
+                                    <div class="card-header"> 
                                         <h5>Recent Admins</h5>
                                     </div>
                                     <div class="card-body">
@@ -740,9 +1363,9 @@ $subjects = $all_subjects;
                                                     <?php else: ?>
                                                         <?php foreach ($recent_admins as $user): ?>
                                                             <tr>
-                                                                <td><?php echo $user['first_name'] . ' ' . $user['last_name']; ?></td>
+                                                                <td><?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?></td>
                                                                 <td><span class="badge bg-danger">Admin</span></td>
-                                                                <td><?php echo $user['username']; ?></td>
+                                                                <td><?php echo htmlspecialchars($user['username']); ?></td>
                                                             </tr>
                                                         <?php endforeach; ?>
                                                     <?php endif; ?>
@@ -773,9 +1396,9 @@ $subjects = $all_subjects;
                                                     <?php else: ?>
                                                         <?php foreach ($recent_teachers as $user): ?>
                                                             <tr>
-                                                                <td><?php echo $user['first_name'] . ' ' . $user['last_name']; ?></td>
+                                                                <td><?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?></td>
                                                                 <td><span class="badge bg-success">Teacher</span></td>
-                                                                <td><?php echo $user['username']; ?></td>
+                                                                <td><?php echo htmlspecialchars($user['username']); ?></td>
                                                             </tr>
                                                         <?php endforeach; ?>
                                                     <?php endif; ?>
@@ -806,9 +1429,9 @@ $subjects = $all_subjects;
                                                     <?php else: ?>
                                                         <?php foreach ($recent_students as $user): ?>
                                                             <tr>
-                                                                <td><?php echo $user['first_name'] . ' ' . $user['last_name']; ?></td>
+                                                                <td><?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?></td>
                                                                 <td><span class="badge bg-primary">Student</span></td>
-                                                                <td><?php echo $user['username']; ?></td>
+                                                                <td><?php echo htmlspecialchars($user['username']); ?></td>
                                                             </tr>
                                                         <?php endforeach; ?>
                                                     <?php endif; ?>
@@ -819,10 +1442,55 @@ $subjects = $all_subjects;
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Recent Audit Log Widget -->
+                        <div class="card border-0 shadow-sm mt-4">
+                            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0 fw-bold"><i class="fas fa-history me-2 text-secondary"></i>Recent System Activity</h5>
+                                <a href="admin.php?tab=audit" class="btn btn-sm btn-outline-secondary">View Full Log <i class="fas fa-arrow-right ms-1"></i></a>
+                            </div>
+                            <div class="card-body p-0">
+                                <ul class="list-group list-group-flush">
+                                    <?php if (empty($recent_audit_logs)): ?>
+                                        <li class="list-group-item text-center text-muted p-4">No recent activity recorded.</li>
+                                    <?php else: ?>
+                                        <?php foreach ($recent_audit_logs as $log): ?>
+                                            <li class="list-group-item d-flex justify-content-between align-items-center p-3">
+                                                <div> 
+                                                    <span class="fw-bold"><?php echo htmlspecialchars($log['admin_first'] . ' ' . $log['admin_last']); ?></span>
+                                                    <span class="text-muted">performed action</span>
+                                                    <span class="badge bg-secondary"><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $log['action']))); ?></span>
+                                                    <?php 
+                                                    $target_display = '';
+                                                    if (!empty($log['target_username'])) {
+                                                        // User exists, show their current username.
+                                                        $target_display = '@' . htmlspecialchars($log['target_username']);
+                                                    } elseif (!empty($log['target_user_id'])) {
+                                                        // User was purged, parse username from details.
+                                                        if (preg_match("/user '([^']*)'/", $log['details'], $matches)) {
+                                                            $target_display = '@' . htmlspecialchars($matches[1]) . ' <span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle">Purged</span>';
+                                                        }
+                                                    }
+                                                    if ($target_display):
+                                                    ?>
+                                                        <span class="text-muted">on</span>
+                                                        <span class="fw-bold"><?php echo $target_display; ?></span>
+                                                    <?php endif; ?>
+                                                </div>
+                                                <small class="text-muted flex-shrink-0 ms-3"><?php echo date('M j, g:i A', strtotime($log['timestamp'])); ?></small>
+                                            </li>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </ul>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="tab-pane fade <?php echo $active_tab === 'users' ? 'show active' : ''; ?>" id="users">
                         <h2 class="mb-4">Manage Users</h2>
+                        <div class="d-flex justify-content-end align-items-center mb-4">
+                            <a href="add_user.php" class="btn btn-primary"><i class="fas fa-plus me-2"></i>Add New User</a>
+                        </div>
 
                         <div class="card mb-4">
                             <div class="card-body">
@@ -830,87 +1498,16 @@ $subjects = $all_subjects;
                                     <input type="hidden" name="tab" value="users">
                                     <div class="flex-grow-1 position-relative">
                                         <input type="text" name="search_user" id="liveSearchInput" class="form-control" placeholder="Search by name, username, or email..." value="<?php echo htmlspecialchars($search_user); ?>" autocomplete="off">
-                                        <div id="searchResultsDropdown" class="list-group position-absolute shadow-lg d-none"></div>
+                                        <div id="searchResultsDropdown" class="list-group position-absolute w-100 shadow-lg d-none"></div>
                                     </div>
-                                    <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i></button>
-                                    <?php if($search_user): ?><a href="admin.php?tab=users" class="btn btn-outline-secondary">Clear</a><?php endif; ?>
-                                </form>
-                            </div>
-                        </div>
-
-                        <div class="card mb-4">
-                            <div class="card-header bg-primary text-white">
-                                <h5 class="mb-0">Add New User</h5>
-                            </div>
-                            <div class="card-body">
-                                <form method="POST" id="addUserForm">
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <label class="form-label small fw-bold">First Name</label>
-                                            <input type="text" class="form-control mb-1" name="first_name" id="val_fname"
-                                                placeholder="First Name" required oninput="this.value = this.value.replace(/[0-9]/g, '').replace(/\b\w/g, c => c.toUpperCase())">
-                                            <div class="invalid-feedback mb-3">Please enter a valid first name</div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label small fw-bold">Last Name</label>
-                                            <input type="text" class="form-control mb-1" name="last_name" id="val_lname"
-                                                placeholder="Last Name" required oninput="this.value = this.value.replace(/[0-9]/g, '').replace(/\b\w/g, c => c.toUpperCase())">
-                                            <div class="invalid-feedback mb-3">Please enter a valid last name</div>
-                                        </div>
-                                    </div>
-                                    <div class="row">
-                                        <div class="col-md-4">
-                                            <label class="form-label small fw-bold">Username</label>
-                                            <input type="text" class="form-control mb-1" name="username" id="val_user"
-                                                placeholder="Username" required>
-                                            <div class="invalid-feedback mb-3">Username is required</div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label class="form-label small fw-bold">Email</label>
-                                            <input type="email" class="form-control mb-1" name="email" id="val_email"
-                                                placeholder="Email" required>
-                                            <div class="invalid-feedback mb-3">A valid email address is required</div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label class="form-label small fw-bold">Role</label>
-                                            <select class="form-select mb-1" name="role" id="val_role">
-                                                <option value="">Select Role</option>
-                                                <option value="admin">Admin</option>
-                                                <option value="teacher">Teacher</option>
-                                                <option value="student">Student</option>
-                                            </select>
-                                            <div class="invalid-feedback mb-3">Please select a role for this user</div>
-                                        </div>
-                                    </div>
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <label class="form-label small fw-bold">Password</label>
-                                            <div class="input-group mb-3">
-                                                <input type="password" class="form-control" name="password"
-                                                    id="new_password" placeholder="Password" required minlength="8">
-                                                <span class="input-group-text password-toggle"
-                                                    onclick="togglePassword('new_password', 'new_password_icon')">
-                                                    <i class="fas fa-eye" id="new_password_icon"></i>
-                                                </span>
-                                            </div>
-                                            <!-- Real-time Strength Indicator -->
-                                            <div class="progress mt-1" style="height: 5px;">
-                                                <div id="add-pw-strength-bar" class="progress-bar" role="progressbar" style="width: 0%"></div>
-                                            </div>
-                                            <small id="add-pw-strength-text" class="text-muted" style="font-size: 0.7rem;"></small>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label d-none d-md-block">&nbsp;</label>
-                                            <button type="submit" name="add_user" class="btn btn-primary w-100">Add User</button>
-                                        </div>
-                                    </div>
+                                    <button type="submit" id="adminUserSearchClearBtn" class="btn btn-primary" title="Search"><i class="fas fa-search"></i></button>
                                 </form>
                             </div>
                         </div>
 
                         <div class="card mb-4">
                             <div class="card-header bg-danger text-white">
-                                <h5 class="mb-0"><i class="fas fa-user-shield me-2"></i>Administrators</h5>
+                                <h5 class="mb-0"><i class="fas fa-user-shield me-2"></i>Admins</h5>
                             </div>
                             <div class="card-body">
                                 <div class="table-responsive">
@@ -925,36 +1522,17 @@ $subjects = $all_subjects;
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <?php $i = 1; foreach ($staff_users as $user):
-                                                if ($user['role'] == 'admin'): ?>
+                                            <?php $i = 1; foreach ($admins as $user): ?>
                                                     <tr id="user-row-<?php echo $user['id']; ?>">
-                                                        <td><?php echo $i++; ?></td>
-                                                        <td><?php echo $user['first_name'] . ' ' . $user['last_name']; ?></td>
-                                                        <td><?php echo $user['username']; ?></td>
-                                                        <td><?php echo $user['email']; ?></td>
+                                                        <td><?php echo htmlspecialchars($i++); ?></td>
+                                                        <td><?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?></td>
+                                                        <td><?php echo htmlspecialchars($user['username']); ?></td>
+                                                        <td><?php echo htmlspecialchars($user['email']); ?></td>
                                                         <td>
-                                                            <button class="btn btn-sm btn-outline-primary"
-                                                                data-bs-toggle="modal" data-bs-target="#editUserModal"
-                                                                data-id="<?php echo $user['id']; ?>"
-                                                                data-username="<?php echo $user['username']; ?>"
-                                                                data-firstname="<?php echo $user['first_name']; ?>"
-                                                                data-lastname="<?php echo $user['last_name']; ?>"
-                                                                data-email="<?php echo $user['email']; ?>"
-                                                                data-role="<?php echo $user['role']; ?>"><i
-                                                                    class="fas fa-edit"></i></button>
-                                                            <button class="btn btn-sm btn-outline-warning" 
-                                                                data-bs-toggle="modal" data-bs-target="#changePasswordModal"
-                                                                data-id="<?php echo $user['id']; ?>"
-                                                                data-username="<?php echo $user['username']; ?>">
-                                                                <i class="fas fa-key"></i>
-                                                            </button>
-                                                            <a href="?action=archive_user&id=<?php echo $user['id']; ?>&search_user=<?php echo urlencode($search_user); ?>"
-                                                                class="btn btn-sm btn-outline-secondary"
-                                                                onclick="return confirm('Archive this admin?')"><i
-                                                                    class="fas fa-archive"></i></a>
+                                                            <?php echo renderAdminUserActionButtons($user, $search_user); ?>
                                                         </td>
                                                     </tr>
-                                                <?php endif; endforeach; ?>
+                                            <?php endforeach; ?>
                                         </tbody>
                                     </table>
                                 </div>
@@ -978,36 +1556,17 @@ $subjects = $all_subjects;
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <?php $i = 1; foreach ($staff_users as $user):
-                                                if ($user['role'] == 'teacher'): ?>
+                                            <?php $i = 1; foreach ($teachers as $user): ?>
                                                     <tr id="user-row-<?php echo $user['id']; ?>">
-                                                        <td><?php echo $i++; ?></td>
-                                                        <td><?php echo $user['first_name'] . ' ' . $user['last_name']; ?></td>
-                                                        <td><?php echo $user['username']; ?></td>
-                                                        <td><?php echo $user['email']; ?></td>
+                                                        <td><?php echo htmlspecialchars($i++); ?></td>
+                                                        <td><?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?></td>
+                                                        <td><?php echo htmlspecialchars($user['username']); ?></td>
+                                                        <td><?php echo htmlspecialchars($user['email']); ?></td>
                                                         <td>
-                                                            <button class="btn btn-sm btn-outline-primary"
-                                                                data-bs-toggle="modal" data-bs-target="#editUserModal"
-                                                                data-id="<?php echo $user['id']; ?>"
-                                                                data-username="<?php echo $user['username']; ?>"
-                                                                data-firstname="<?php echo $user['first_name']; ?>"
-                                                                data-lastname="<?php echo $user['last_name']; ?>"
-                                                                data-email="<?php echo $user['email']; ?>"
-                                                                data-role="<?php echo $user['role']; ?>"><i
-                                                                    class="fas fa-edit"></i></button>
-                                                            <button class="btn btn-sm btn-outline-warning" 
-                                                                data-bs-toggle="modal" data-bs-target="#changePasswordModal"
-                                                                data-id="<?php echo $user['id']; ?>"
-                                                                data-username="<?php echo $user['username']; ?>">
-                                                                <i class="fas fa-key"></i>
-                                                            </button>
-                                                            <a href="?action=archive_user&id=<?php echo $user['id']; ?>&search_user=<?php echo urlencode($search_user); ?>"
-                                                                class="btn btn-sm btn-outline-secondary"
-                                                                onclick="return confirm('Archive this teacher?')"><i
-                                                                    class="fas fa-archive"></i></a>
+                                                            <?php echo renderAdminUserActionButtons($user, $search_user); ?>
                                                         </td>
                                                     </tr>
-                                                <?php endif; endforeach; ?>
+                                            <?php endforeach; ?>
                                         </tbody>
                                     </table>
                                 </div>
@@ -1035,51 +1594,21 @@ $subjects = $all_subjects;
                                         <tbody>
                                             <?php $i = 1; foreach ($all_students as $student): ?>
                                                 <tr id="user-row-<?php echo $student['id']; ?>">
-                                                    <td><?php echo $i++; ?></td>
-                                                    <td><?php echo $student['first_name'] . ' ' . $student['last_name']; ?>
+                                                    <td class="align-middle"><?php echo $i++; ?></td>
+                                                    <td class="align-middle"><?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>
                                                     </td>
-                                                    <td><?php echo $student['username']; ?></td>
-                                                    <td>
+                                                    <td class="align-middle"><?php echo htmlspecialchars($student['username']); ?></td>
+                                                    <td class="align-middle">
                                                         <?php if ($student['enrolled_subjects']): ?>
                                                             <span class="badge bg-success-subtle text-success border border-success-subtle">Enrolled</span>
                                                         <?php else: ?>
                                                             <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Pending</span>
                                                         <?php endif; ?>
                                                     </td>
-                                                    <td><span class="badge bg-light text-dark border"><?php echo $student['course'] . ' | ' . $student['year_level']; ?></span></td>
-                                                    <td><?php echo $student['email']; ?></td>
-                                                    <td>
-                                                        <button class="btn btn-sm btn-outline-info" 
-                                                            data-bs-toggle="modal" data-bs-target="#viewUserProfileModal"
-                                                            data-all='<?php echo htmlspecialchars(json_encode($student), ENT_QUOTES, "UTF-8"); ?>'>
-                                                            <i class="fas fa-eye"></i>
-                                                        </button>
-                                                        <button class="btn btn-sm btn-outline-success" 
-                                                            data-bs-toggle="modal" data-bs-target="#monitorPerformanceModal"
-                                                            data-id="<?php echo $student['id']; ?>"
-                                                            data-name="<?php echo $student['first_name'] . ' ' . $student['last_name']; ?>">
-                                                            <i class="fas fa-chart-line"></i>
-                                                        </button>
-                                                        <button class="btn btn-sm btn-outline-primary" 
-                                                            data-bs-toggle="modal" data-bs-target="#editUserModal" 
-                                                            data-id="<?php echo $student['id']; ?>" 
-                                                            data-username="<?php echo $student['username']; ?>" 
-                                                            data-firstname="<?php echo $student['first_name']; ?>" 
-                                                            data-lastname="<?php echo $student['last_name']; ?>" 
-                                                            data-email="<?php echo $student['email']; ?>" 
-                                                            data-role="student">
-                                                            <i class="fas fa-edit"></i>
-                                                        </button>
-                                                        <button class="btn btn-sm btn-outline-warning" 
-                                                            data-bs-toggle="modal" data-bs-target="#changePasswordModal"
-                                                            data-id="<?php echo $student['id']; ?>"
-                                                            data-username="<?php echo $student['username']; ?>">
-                                                            <i class="fas fa-key"></i>
-                                                        </button>
-                                                        <a href="?action=delete_student&id=<?php echo $student['id']; ?>&search_user=<?php echo urlencode($search_user); ?>"
-                                                            class="btn btn-sm btn-outline-secondary"
-                                                            onclick="return confirm('Archive this student record?')"><i
-                                                                class="fas fa-archive"></i></a>
+                                                    <td class="align-middle"><span class="badge bg-light text-dark border"><?php echo htmlspecialchars($student['course'] . ' | ' . $student['year_level']); ?></span></td>
+                                                    <td class="align-middle"><?php echo htmlspecialchars($student['email']); ?></td>
+                                                    <td class="align-middle">
+                                                        <?php echo renderAdminUserActionButtons($student, $search_user); ?>
                                                     </td>
                                                 </tr>
                                             <?php endforeach; ?>
@@ -1096,9 +1625,9 @@ $subjects = $all_subjects;
                         <div class="card mb-4 border-0 shadow-sm">
                             <div class="card-body">
                                 <form method="GET" action="admin.php" class="d-flex gap-2">
-                                    <input type="hidden" name="tab" value="archive">
-                                    <input type="text" name="search_user" class="form-control" placeholder="Search archive..." value="<?php echo htmlspecialchars($search_user); ?>">
-                                    <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i></button>
+                                    <input type="hidden" name="tab" value="archive"> 
+                                    <input type="text" name="search_user" id="archiveSearchInput" class="form-control" placeholder="Search archive..." value="<?php echo htmlspecialchars($search_user); ?>">
+                                    <button type="submit" id="adminArchiveSearchClearBtn" class="btn btn-primary" title="Search"><i class="fas fa-search"></i></button>
                                 </form>
                             </div>
                         </div>
@@ -1124,15 +1653,15 @@ $subjects = $all_subjects;
                                             <?php else: ?>
                                                 <?php foreach ($archived_users as $au): ?>
                                                     <tr>
-                                                        <td><span class="badge bg-light text-dark border"><?php echo ucfirst($au['role']); ?></span></td>
-                                                        <td><strong><?php echo $au['first_name'] . ' ' . $au['last_name']; ?></strong></td>
-                                                        <td><?php echo $au['username']; ?></td>
-                                                        <td><?php echo $au['email']; ?></td>
+                                                        <td><span class="badge bg-light text-dark border"><?php echo htmlspecialchars(ucfirst($au['role'])); ?></span></td>
+                                                        <td><strong><?php echo htmlspecialchars($au['first_name'] . ' ' . $au['last_name']); ?></strong></td>
+                                                        <td><?php echo htmlspecialchars($au['username']); ?></td>
+                                                        <td><?php echo htmlspecialchars($au['email']); ?></td>
                                                         <td>
-                                                            <a href="?action=restore_user&id=<?php echo $au['id']; ?>&search_user=<?php echo urlencode($search_user); ?>" class="btn btn-sm btn-outline-success">
+                                                            <a href="?action=restore_user&id=<?php echo htmlspecialchars($au['id']); ?>&search_user=<?php echo urlencode($search_user); ?>&csrf_token=<?php echo $_SESSION['csrf_token']; ?>" class="btn btn-sm btn-outline-success">
                                                                 <i class="fas fa-undo me-1"></i> Restore
                                                             </a>
-                                                            <a href="?action=delete_user&id=<?php echo $au['id']; ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('PERMANENTLY DELETE this user and all associated data? This cannot be undone.')">
+                                                            <a href="?action=delete_user&id=<?php echo htmlspecialchars($au['id']); ?>&csrf_token=<?php echo $_SESSION['csrf_token']; ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('PERMANENTLY DELETE this user and all associated data? This cannot be undone.')">
                                                                 <i class="fas fa-trash-alt me-1"></i> Purge
                                                             </a>
                                                         </td>
@@ -1146,49 +1675,519 @@ $subjects = $all_subjects;
                         </div>
                     </div>
 
-                    <!-- Settings Tab -->
-                    <div class="tab-pane fade <?php echo $active_tab === 'settings' ? 'show active' : ''; ?>" id="settings">
-                        <h2 class="mb-4">System Settings</h2>
-                        <div class="card mb-4 border-0 shadow-sm">
-                            <div class="card-header bg-white fw-bold">Configuration & Branding</div>
+                    <!-- Audit Log Tab -->
+                    <div class="tab-pane fade <?php echo $active_tab === 'audit' ? 'show active' : ''; ?>" id="audit">
+                        <h2 class="mb-4">System Audit Log</h2>
+
+                        <!-- Filter Form -->
+                        <div class="card border-0 shadow-sm mb-4">
                             <div class="card-body">
-                                <form method="POST" enctype="multipart/form-data" class="row align-items-end g-3">
-                                    <div class="col-md-3 text-center">
-                                        <img src="<?php echo getSystemSetting($pdo, 'system_logo', 'image/aclc.jpg'); ?>" class="rounded border p-1" style="width: 100px; height: 100px; object-fit: cover;">
-                                        <div class="small text-muted mt-2">Current Logo</div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label small fw-bold">Upload New System Logo</label>
-                                        <input type="file" name="logo_file" class="form-control" accept="image/*" required>
-                                        <div class="form-text">This logo will be displayed across all portal dashboards and login pages.</div>
-                                    </div>
+                                <form method="GET" action="admin.php" class="row g-3 align-items-end">
+                                    <input type="hidden" name="tab" value="audit">
                                     <div class="col-md-3">
-                                        <button type="submit" name="update_logo" class="btn btn-dark w-100">
-                                            <i class="fas fa-upload me-2"></i>Update Branding
-                                        </button>
+                                        <label for="audit_search" class="form-label small">Search Details/User</label>
+                                        <input type="text" class="form-control form-control-sm" id="audit_search" name="audit_search" value="<?php echo htmlspecialchars($audit_search); ?>" placeholder="e.g. user_create, @username">
                                     </div>
+                                    <div class="col-md-2">
+                                        <label for="audit_action" class="form-label small">Action Type</label>
+                                        <select class="form-select form-select-sm" id="audit_action" name="audit_action">
+                                            <option value="">All Actions</option>
+                                            <?php foreach ($distinct_actions as $action_item): ?>
+                                                <option value="<?php echo htmlspecialchars($action_item); ?>" <?php echo ($audit_action === $action_item) ? 'selected' : ''; ?>><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $action_item))); ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="audit_admin_id" class="form-label small">Performed By</label>
+                                        <select class="form-select form-select-sm" id="audit_admin_id" name="audit_admin_id">
+                                            <option value="">All Admins</option>
+                                            <?php foreach ($all_admins_for_filter as $admin_user): ?> 
+                                                <option value="<?php echo $admin_user['id']; ?>" <?php echo ($audit_admin_id == $admin_user['id']) ? 'selected' : ''; ?>><?php echo htmlspecialchars($admin_user['first_name'] . ' ' . $admin_user['last_name']); ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2"><label for="audit_start_date" class="form-label small">Start Date</label><input type="text" class="form-control form-control-sm flatpickr-date" id="audit_start_date" name="audit_start_date" value="<?php echo htmlspecialchars($audit_start_date); ?>" placeholder="Select start date..." readonly></div>
+                                    <div class="col-md-2"><label for="audit_end_date" class="form-label small">End Date</label><input type="text" class="form-control form-control-sm flatpickr-date" id="audit_end_date" name="audit_end_date" value="<?php echo htmlspecialchars($audit_end_date); ?>" placeholder="Select end date..." readonly></div>
+                                    <div class="col-md-1 d-flex"><button type="submit" class="btn btn-sm btn-primary w-100 me-2" title="Apply Filters"><i class="fas fa-filter"></i></button><a href="admin.php?tab=audit" class="btn btn-sm btn-secondary w-100" title="Clear Filters"><i class="fas fa-times"></i></a></div>
                                 </form>
                             </div>
                         </div>
 
-                        <div class="card mb-4 border-0 shadow-sm">
-                            <div class="card-header bg-white fw-bold">Institutional Grading Policy</div>
-                            <div class="card-body">
-                                <div class="row text-center mb-4">
-                                    <div class="col-md-6 border-end">
-                                        <h6 class="fw-bold text-primary">LECTURE (40%)</h6>
-                                        <p class="small mb-1">Quizzes: 40% | CS: 10% | Major Exam: 50%</p>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <h6 class="fw-bold text-success">LABORATORY (60%)</h6>
-                                        <p class="small mb-1">Activities: 40% | CS: 10% | Actual Exam: 50%</p>
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header bg-dark text-white">
+                                <h5 class="mb-0"><i class="fas fa-clipboard-list me-2"></i>Administrative Actions (<?php echo number_format($total_audit_logs); ?> records found)</h5>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th class="ps-3">Timestamp</th> 
+                                                <th>Admin</th>
+                                                <th>Action</th>
+                                                <th>Target User</th>
+                                                <th style="width: 35%;">Details</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php if (empty($audit_logs)): ?>
+                                                <tr><td colspan="6" class="text-center py-5 text-muted">No audit records found. This may be a new feature.</td></tr>
+                                            <?php else: ?>
+                                                <?php foreach ($audit_logs as $log): ?>
+                                                    <tr>
+                                                        <td class="ps-3"><small><?php echo date('M j, Y g:i:s A', strtotime($log['timestamp'])); ?></small></td>
+                                                        <td><?php echo htmlspecialchars($log['admin_first'] . ' ' . $log['admin_last']); ?></td>
+                                                        <td><span class="badge bg-secondary"><?php echo htmlspecialchars(str_replace('_', ' ', $log['action'])); ?></span></td>
+                                                        <td>
+                                                            <?php if (!empty($log['target_user_id'])): ?>
+                                                                <?php 
+                                                                if (!empty($log['target_username'])) {
+                                                                    // User exists, show their current name and username.
+                                                                    echo htmlspecialchars(($log['target_first'] ?? '') . ' ' . ($log['target_last'] ?? ''));
+                                                                    echo '<small class="text-muted d-block">@' . htmlspecialchars($log['target_username']) . '</small>';
+                                                                } else {
+                                                                    // User was purged, parse username from details.
+                                                                    if (preg_match("/user '([^']*)'/", $log['details'], $matches)) {
+                                                                        echo '<span class="text-danger">' . htmlspecialchars($matches[1]) . ' (Purged)</span>';
+                                                                    } else {
+                                                                        echo '<span class="text-danger">Purged User</span>';
+                                                                    }
+                                                                    echo '<small class="text-muted d-block">User ID: ' . htmlspecialchars($log['target_user_id']) . '</small>';
+                                                                } ?>
+                                                            <?php else: ?><span class="text-muted">N/A</span><?php endif; ?>
+                                                        </td>
+                                                        <td><pre class="mb-0" style="font-size: 0.8em; white-space: pre-wrap;"><?php echo htmlspecialchars($log['details']); ?></pre></td>
+                                                        <td>
+                                                            <?php if ($log['action'] === 'user_update' && $log['target_user_id']): ?>
+                                                                <a href="admin.php?tab=audit&action=revert_update&log_id=<?php echo $log['id']; ?>&csrf_token=<?php echo $_SESSION['csrf_token']; ?>" 
+                                                                   class="btn btn-sm btn-outline-warning" title="Revert this change" 
+                                                                   onclick="return confirm('Are you sure you want to revert this user update? This will restore the previous values.');"><i class="fas fa-history"></i> Revert</a>
+                                                            <?php endif; ?>
+                                                        </td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                            <?php endif; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <?php
+                        $pagination_params = array_filter([
+                            'tab' => 'audit', 'audit_search' => $audit_search, 'audit_action' => $audit_action,
+                            'audit_admin_id' => $audit_admin_id, 'audit_start_date' => $audit_start_date, 'audit_end_date' => $audit_end_date,
+                        ]);
+                        $query_string = http_build_query($pagination_params);
+                        ?>
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <span class="text-muted small">
+                                Page <?php echo $audit_page; ?> of <?php echo $total_audit_pages > 0 ? $total_audit_pages : 1; ?>
+                            </span>
+                            <?php if ($total_audit_pages > 1): ?>
+                            <nav>
+                                <ul class="pagination mb-0">
+                                    <li class="page-item <?php echo ($audit_page <= 1) ? 'disabled' : ''; ?>">
+                                        <a class="page-link" href="?<?php echo $query_string . '&audit_page=' . ($audit_page - 1); ?>">Previous</a>
+                                    </li>
+                                    <?php for ($i = 1; $i <= $total_audit_pages; $i++): ?>
+                                        <?php if ($i == $audit_page || $i <= 2 || $i >= $total_audit_pages - 1 || abs($i - $audit_page) <= 1): ?>
+                                            <li class="page-item <?php echo ($audit_page == $i) ? 'active' : ''; ?>"><a class="page-link" href="?<?php echo $query_string . '&audit_page=' . $i; ?>"><?php echo $i; ?></a></li>
+                                        <?php elseif ($i == $audit_page - 2 || $i == $audit_page + 2): ?>
+                                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                                        <?php endif; ?>
+                                    <?php endfor; ?>
+                                    <li class="page-item <?php echo ($audit_page >= $total_audit_pages) ? 'disabled' : ''; ?>">
+                                        <a class="page-link" href="?<?php echo $query_string . '&audit_page=' . ($audit_page + 1); ?>">Next</a>
+                                    </li>
+                                </ul>
+                            </nav>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <!-- Broadcast History Tab -->
+                    <div class="tab-pane fade <?php echo $active_tab === 'broadcast-history' ? 'show active' : ''; ?>" id="broadcast-history">
+                        <h2 class="mb-4">Broadcast History</h2>
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header bg-white">
+                                <h5 class="mb-0"><i class="fas fa-history me-2"></i>Sent Broadcasts (<?php echo $total_broadcasts; ?> total)</h5>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th class="ps-4">Sender</th>
+                                                <th style="width: 40%;">Message</th>
+                                                <th>Target Audience</th>
+                                                <th class="text-center">Recipients</th>
+                                                <th>Date Sent</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php if (empty($broadcast_history)): ?>
+                                                <tr><td colspan="5" class="text-center text-muted p-5">No broadcast history found.</td></tr>
+                                            <?php else: ?>
+                                                <?php foreach ($broadcast_history as $broadcast): ?>
+                                                    <tr class="align-middle">
+                                                        <td class="ps-4 fw-bold"><?php echo htmlspecialchars($broadcast['sender_first'] . ' ' . $broadcast['sender_last']); ?></td>
+                                                        <td><small><?php echo highlightNotificationKeywords($broadcast['message']); ?></small></td>
+                                                        <td><?php $roles = explode(', ', $broadcast['target_roles']); foreach ($roles as $role) { echo '<span class="badge bg-secondary me-1">' . htmlspecialchars(ucfirst($role)) . '</span>'; } ?></td>
+                                                        <td class="text-center"><span class="badge rounded-pill bg-primary"><?php echo $broadcast['recipient_count']; ?></span></td>
+                                                        <td><small><?php echo date('M j, Y, g:i a', strtotime($broadcast['created_at'])); ?></small></td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                            <?php endif; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Pagination for Broadcast History -->
+                        <?php if ($total_broadcast_pages > 1): ?>
+                        <nav class="mt-4"><ul class="pagination justify-content-center">
+                            <li class="page-item <?php echo ($broadcast_page <= 1) ? 'disabled' : ''; ?>"><a class="page-link" href="?tab=broadcast-history&broadcast_page=<?php echo $broadcast_page - 1; ?>">Previous</a></li>
+                            <?php for ($i = 1; $i <= $total_broadcast_pages; $i++): ?><?php if ($i == $broadcast_page || $i <= 2 || $i >= $total_broadcast_pages - 1 || abs($i - $broadcast_page) <= 1): ?><li class="page-item <?php echo ($broadcast_page == $i) ? 'active' : ''; ?>"><a class="page-link" href="?tab=broadcast-history&broadcast_page=<?php echo $i; ?>"><?php echo $i; ?></a></li><?php elseif ($i == $broadcast_page - 2 || $i == $broadcast_page + 2): ?><li class="page-item disabled"><span class="page-link">...</span></li><?php endif; ?><?php endfor; ?>
+                            <li class="page-item <?php echo ($broadcast_page >= $total_broadcast_pages) ? 'disabled' : ''; ?>"><a class="page-link" href="?tab=broadcast-history&broadcast_page=<?php echo $broadcast_page + 1; ?>">Next</a></li>
+                        </ul></nav>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- Settings Tab -->
+                    <div class="tab-pane fade <?php echo $active_tab === 'settings' ? 'show active' : ''; ?>" id="settings">
+                        <h2 class="mb-4">System Settings</h2>
+                        <?php $active_sub_tab = $_GET['sub_tab'] ?? 'profile'; ?>
+                        <ul class="nav nav-pills mb-3" id="pills-tab" role="tablist">
+                            <li class="nav-item" role="presentation"><button class="nav-link <?php echo $active_sub_tab === 'profile' ? 'active' : ''; ?>" data-bs-toggle="pill" data-bs-target="#pills-profile">My Profile</button></li>
+                            <li class="nav-item" role="presentation"><button class="nav-link <?php echo $active_sub_tab === 'branding' ? 'active' : ''; ?>" data-bs-toggle="pill" data-bs-target="#pills-branding">Branding & Policy</button></li>
+                            <li class="nav-item" role="presentation"><button class="nav-link <?php echo $active_sub_tab === 'smtp' ? 'active' : ''; ?>" data-bs-toggle="pill" data-bs-target="#pills-smtp">Email / SMTP</button></li>
+                            <li class="nav-item" role="presentation"><button class="nav-link <?php echo $active_sub_tab === 'theme' ? 'active' : ''; ?>" data-bs-toggle="pill" data-bs-target="#pills-theme">Theme Colors</button></li>
+                            <li class="nav-item" role="presentation"><button class="nav-link <?php echo $active_sub_tab === 'broadcast' ? 'active' : ''; ?>" data-bs-toggle="pill" data-bs-target="#pills-broadcast">Broadcast Editor</button></li>
+                        </ul>
+                        <div class="tab-content" id="pills-tabContent">
+                            <div class="tab-pane fade <?php echo $active_sub_tab === 'profile' ? 'show active' : ''; ?>" id="pills-profile">
+                                <div class="card border-0 shadow-sm">
+                                    <div class="card-header bg-white fw-bold">My Admin Profile</div>
+                                    <div class="card-body">
+                                        <form method="POST" enctype="multipart/form-data">
+                                            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                            <div class="row">
+                                                <div class="col-md-8">
+                                                    <div class="row">
+                                                        <div class="col-md-6 mb-3"><label class="form-label">First Name</label><input type="text" class="form-control" name="first_name" value="<?php echo htmlspecialchars($admin_info['first_name']); ?>" required></div>
+                                                        <div class="col-md-6 mb-3"><label class="form-label">Last Name</label><input type="text" class="form-control" name="last_name" value="<?php echo htmlspecialchars($admin_info['last_name']); ?>" required></div>
+                                                        <div class="col-12 mb-3"><label class="form-label">Email Address</label><input type="email" class="form-control" name="email" value="<?php echo htmlspecialchars($admin_info['email']); ?>" required></div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4 text-center">
+                                                    <img src="<?php echo htmlspecialchars($admin_info['profile_picture'] ?? 'image/default_avatar.png'); ?>" id="adminProfilePicturePreview" class="rounded-circle mb-2 cropper-preview" style="width: 120px; height: 120px; object-fit: cover; border: 3px solid #eee;" onerror="this.onerror=null;this.src='image/default_avatar.png';">
+                                                    <input type="file" class="form-control form-control-sm cropper-file-input" name="profile_picture" accept="image/*">
+                                                    <input type="hidden" name="cropped_image_data" class="cropper-data">
+                                                    <div class="form-text">Update Picture</div>
+                                                </div>
+                                            </div>
+                                                <hr class="my-3">
+                                            <div class="row">
+                                                <div class="col-md-6 mb-3"><label class="form-label">New Password</label><input type="password" class="form-control" name="new_password" placeholder="Leave blank to keep current"></div>
+                                                <div class="col-md-6 mb-3"><label class="form-label">Confirm New Password</label><input type="password" class="form-control" name="confirm_password"></div>
+                                            </div>
+                                            <div class="text-end"><button type="submit" name="update_admin_profile" class="btn btn-primary"><i class="fas fa-save me-2"></i>Update My Profile</button></div>
+                                        </form>
                                     </div>
                                 </div>
-                                <div class="alert alert-light border small text-center">
-                                    <strong>Semestral Distribution:</strong> 
-                                    Prelim (20%) + Midterm (20%) + Prefinal (20%) + Final (40%)
+                            </div>
+                            <div class="tab-pane fade <?php echo $active_sub_tab === 'branding' ? 'show active' : ''; ?>" id="pills-branding">
+                                <div class="card mb-4 border-0 shadow-sm">
+                                    <div class="card-header bg-white fw-bold">Configuration & Branding</div>
+                                    <div class="card-body">
+                                        <form method="POST" enctype="multipart/form-data" class="row align-items-end g-3">
+                                            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                            <div class="col-md-3 text-center">
+                                                <img src="<?php echo getSystemSetting($pdo, 'system_logo', 'image/aclc.jpg'); ?>" class="rounded border p-1" style="width: 100px; height: 100px; object-fit: cover;">
+                                                <div class="small text-muted mt-2">Current Logo</div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label small fw-bold">Upload New System Logo</label>
+                                                <input type="file" name="logo_file" class="form-control" accept="image/*" required>
+                                                <div class="form-text">This logo will be displayed across all portal dashboards and login pages.</div>
+                                            </div>
+                                            <div class="col-md-3"><button type="submit" name="update_logo" class="btn btn-dark w-100"><i class="fas fa-upload me-2"></i>Update Branding</button></div>
+                                        </form>
+                                    </div>
                                 </div>
-                                <p class="text-muted small mb-0"><i class="fas fa-info-circle me-1"></i> Grading weights are now fixed to institutional standards.</p>
+                                <div class="card mb-4 border-0 shadow-sm">
+                                    <div class="card-header bg-white fw-bold">Login Page Slideshow</div>
+                                    <div class="card-body">
+                                        <form method="POST" enctype="multipart/form-data" class="row g-3">
+                                            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                            <div class="col-md-3">
+                                                <label class="form-label small fw-bold">Enable Slideshow</label>
+                                                <select name="login_slideshow_enabled" class="form-select">
+                                                    <option value="1" <?php echo getSystemSetting($pdo, 'login_slideshow_enabled', '1') === '1' ? 'selected' : ''; ?>>Enabled</option>
+                                                    <option value="0" <?php echo getSystemSetting($pdo, 'login_slideshow_enabled', '1') === '0' ? 'selected' : ''; ?>>Disabled</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label small fw-bold">Slide Transition (seconds)</label>
+                                                <input type="number" name="login_slideshow_interval" class="form-control" min="3" max="30" value="<?php echo htmlspecialchars(getSystemSetting($pdo, 'login_slideshow_interval', '6')); ?>">
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label small fw-bold">Overlay Opacity</label>
+                                                <input type="range" name="login_slideshow_opacity" class="form-control" min="0" max="100" value="<?php echo htmlspecialchars(getSystemSetting($pdo, 'login_slideshow_opacity', '30')); ?>">
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label small fw-bold">Form Glassmorphism</label>
+                                                <select name="login_form_glass" class="form-select">
+                                                    <option value="1" <?php echo getSystemSetting($pdo, 'login_form_glass', '1') === '1' ? 'selected' : ''; ?>>Enabled</option>
+                                                    <option value="0" <?php echo getSystemSetting($pdo, 'login_form_glass', '1') === '0' ? 'selected' : ''; ?>>Disabled</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label small fw-bold">Slideshow Image 1</label>
+                                                <input type="file" name="slideshow_image_1" class="form-control" accept="image/*">
+                                                <div class="form-text">Upload slideshow image 1 (1920x1080px recommended)</div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label small fw-bold">Slideshow Image 2</label>
+                                                <input type="file" name="slideshow_image_2" class="form-control" accept="image/*">
+                                                <div class="form-text">Upload slideshow image 2 (1920x1080px recommended)</div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label small fw-bold">Slideshow Image 3</label>
+                                                <input type="file" name="slideshow_image_3" class="form-control" accept="image/*">
+                                                <div class="form-text">Upload slideshow image 3 (1920x1080px recommended)</div>
+                                            </div>
+                                            <div class="col-12 text-end">
+                                                <button type="submit" name="update_slideshow" class="btn btn-primary"><i class="fas fa-save me-2"></i>Save Slideshow Settings</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                                <div class="card mb-4 border-0 shadow-sm">
+                                    <div class="card-header bg-white fw-bold">Registration Page Background</div>
+                                    <div class="card-body">
+                                        <form method="POST" enctype="multipart/form-data" class="row g-3">
+                                            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                            <div class="col-md-4">
+                                                <label class="form-label small fw-bold">Background Type</label>
+                                                <select name="register_bg_type" class="form-select">
+                                                    <option value="color" <?php echo getSystemSetting($pdo, 'register_bg_type', 'color') === 'color' ? 'selected' : ''; ?>>Solid Color</option>
+                                                    <option value="image" <?php echo getSystemSetting($pdo, 'register_bg_type', 'color') === 'image' ? 'selected' : ''; ?>>Single Image</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label small fw-bold">Background Color</label>
+                                                <input type="color" name="register_bg_color" class="form-control form-control-color" value="<?php echo htmlspecialchars(getSystemSetting($pdo, 'register_bg_color', '#f1f5f9')); ?>">
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label small fw-bold">Background Image</label>
+                                                <input type="file" name="register_bg_image" class="form-control" accept="image/*">
+                                                <div class="form-text">Upload background image (1920x1080px recommended)</div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label small fw-bold">Image Opacity</label>
+                                                <input type="range" name="register_bg_opacity" class="form-control" min="0" max="100" value="<?php echo htmlspecialchars(getSystemSetting($pdo, 'register_bg_opacity', '100')); ?>">
+                                            </div>
+                                            <div class="col-12 text-end">
+                                                <button type="submit" name="update_register_bg" class="btn btn-primary"><i class="fas fa-save me-2"></i>Save Register Background</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                                <div class="card mb-4 border-0 shadow-sm">
+                                    <div class="card-header bg-white fw-bold">Institutional Grading Policy</div>
+                                    <div class="card-body">
+                                        <form method="POST">
+                                            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                            <div class="row g-4 mb-4">
+                                                <div class="col-md-6 border-end">
+                                                    <h6 class="fw-bold text-primary mb-3">LECTURE SETTINGS (Overall: <input type="number" name="weight_lec" class="d-inline form-control form-control-sm w-25 text-center" value="<?php echo getSystemSetting($pdo, 'weight_lec', 40); ?>">% )</h6>
+                                                    <div class="row g-2">
+                                                        <div class="col-4"><label class="small fw-bold">Quiz (%)</label><input type="number" name="weight_lec_quiz" class="form-control form-control-sm text-center" value="<?php echo getSystemSetting($pdo, 'weight_lec_quiz', 40); ?>"></div>
+                                                        <div class="col-4"><label class="small fw-bold">Online (%)</label><input type="number" name="weight_lec_online" class="form-control form-control-sm text-center" value="<?php echo getSystemSetting($pdo, 'weight_lec_online', 10); ?>"></div>
+                                                        <div class="col-4"><label class="small fw-bold">Exam (%)</label><input type="number" name="weight_lec_exam" class="form-control form-control-sm text-center" value="<?php echo getSystemSetting($pdo, 'weight_lec_exam', 50); ?>"></div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <h6 class="fw-bold text-success mb-3">LABORATORY SETTINGS (Overall: <input type="number" name="weight_lab" class="d-inline form-control form-control-sm w-25 text-center" value="<?php echo getSystemSetting($pdo, 'weight_lab', 60); ?>">% )</h6>
+                                                    <div class="row g-2">
+                                                        <div class="col-4"><label class="small fw-bold">Activity (%)</label><input type="number" name="weight_lab_cs" class="form-control form-control-sm text-center" value="<?php echo getSystemSetting($pdo, 'weight_lab_cs', 40); ?>"></div>
+                                                        <div class="col-4"><label class="small fw-bold">Att (%)</label><input type="number" name="weight_lab_att" class="form-control form-control-sm text-center" value="<?php echo getSystemSetting($pdo, 'weight_lab_att', 10); ?>"></div>
+                                                        <div class="col-4"><label class="small fw-bold">Exam (%)</label><input type="number" name="weight_lab_exam" class="form-control form-control-sm text-center" value="<?php echo getSystemSetting($pdo, 'weight_lab_exam', 50); ?>"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <hr>
+                                            <h6 class="fw-bold text-dark mb-3">SEMENTRAL / PERIOD DISTRIBUTION (Overall Grade %)</h6>
+                                            <div class="row g-2 mb-3">
+                                                <div class="col-3"><label class="small fw-bold">Prelim (%)</label><input type="number" name="period_weight_prelim" class="form-control form-control-sm text-center" value="<?php echo getSystemSetting($pdo, 'period_weight_prelim', 20); ?>"></div>
+                                                <div class="col-3"><label class="small fw-bold">Midterm (%)</label><input type="number" name="period_weight_midterm" class="form-control form-control-sm text-center" value="<?php echo getSystemSetting($pdo, 'period_weight_midterm', 20); ?>"></div>
+                                                <div class="col-3"><label class="small fw-bold">Prefinal (%)</label><input type="number" name="period_weight_prefinal" class="form-control form-control-sm text-center" value="<?php echo getSystemSetting($pdo, 'period_weight_prefinal', 20); ?>"></div>
+                                                <div class="col-3"><label class="small fw-bold">Final (%)</label><input type="number" name="period_weight_final" class="form-control form-control-sm text-center" value="<?php echo getSystemSetting($pdo, 'period_weight_final', 40); ?>"></div>
+                                            </div>
+                                            <div class="text-end"><button type="submit" name="update_weights" class="btn btn-dark btn-sm"><i class="fas fa-save me-2"></i>Apply Global Policy</button></div>
+                                        </form>
+                                        <div class="alert alert-light border small text-center mt-3"><strong>Semestral Distribution:</strong> Prelim (<?php echo getSystemSetting($pdo,'period_weight_prelim',20); ?>%) + Midterm (<?php echo getSystemSetting($pdo,'period_weight_midterm',20); ?>%) + Prefinal (<?php echo getSystemSetting($pdo,'period_weight_prefinal',20); ?>%) + Final (<?php echo getSystemSetting($pdo,'period_weight_final',40); ?>%). Configure to match your school/teacher grading policy; imports and calculations use these weights.</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade <?php echo $active_sub_tab === 'theme' ? 'show active' : ''; ?>" id="pills-theme">
+                                <div class="card border-0 shadow-sm">
+                                    <div class="card-header bg-white fw-bold">Theme Colors</div>
+                                    <div class="card-body">
+                                        <form method="POST" class="row g-3">
+                                            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                            <div class="col-md-6">
+                                                <label class="form-label small fw-bold">Sidebar Background</label>
+                                                <input type="color" name="theme_sidebar_bg" class="form-control form-control-color" value="<?php echo htmlspecialchars(getSystemSetting($pdo, 'theme_sidebar_bg', '#0f172a')); ?>">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label small fw-bold">Primary / Accent Color</label>
+                                                <input type="color" name="theme_primary_color" class="form-control form-control-color" value="<?php echo htmlspecialchars(getSystemSetting($pdo, 'theme_primary_color', '#1e3a8a')); ?>">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label small fw-bold">Body Background</label>
+                                                <input type="color" name="theme_body_bg" class="form-control form-control-color" value="<?php echo htmlspecialchars(getSystemSetting($pdo, 'theme_body_bg', '#f1f5f9')); ?>">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label small fw-bold">Header / Navbar Background</label>
+                                                <input type="color" name="theme_header_bg" class="form-control form-control-color" value="<?php echo htmlspecialchars(getSystemSetting($pdo, 'theme_header_bg', '#ffffff')); ?>">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label small fw-bold">Main Text Color</label>
+                                                <input type="color" name="theme_text_color" class="form-control form-control-color" value="<?php echo htmlspecialchars(getSystemSetting($pdo, 'theme_text_color', '#1e293b')); ?>">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label small fw-bold">Accent / Highlight Color</label>
+                                                <input type="color" name="theme_accent_color" class="form-control form-control-color" value="<?php echo htmlspecialchars(getSystemSetting($pdo, 'theme_accent_color', '#6366f1')); ?>">
+                                            </div>
+                                            <div class="col-12 text-end">
+                                                <form method="POST" class="d-inline" onsubmit="return confirm('Reset all theme colors to default?');">
+                                                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                                    <button type="submit" name="reset_theme_colors" class="btn btn-outline-secondary"><i class="fas fa-undo me-2"></i>Reset to Default</button>
+                                                </form>
+                                                <button type="submit" name="update_theme_colors" class="btn btn-primary ms-2"><i class="fas fa-palette me-2"></i>Save Theme Colors</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade <?php echo $active_sub_tab === 'smtp' ? 'show active' : ''; ?>" id="pills-smtp">
+                                <div class="card border-0 shadow-sm">
+                                    <div class="card-header bg-white fw-bold">Email / SMTP Configuration</div>
+                                    <div class="card-body">
+                                        <form method="POST" class="row g-3">
+                                            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                            <div class="col-md-6">
+                                                <label class="form-label small fw-bold">From Email</label>
+                                                <input type="email" name="smtp_from_email" class="form-control" value="<?php echo htmlspecialchars(getSystemSetting($pdo, 'smtp_from_email', '')); ?>" placeholder="your-email@gmail.com">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label small fw-bold">From Name</label>
+                                                <input type="text" name="smtp_from_name" class="form-control" value="<?php echo htmlspecialchars(getSystemSetting($pdo, 'smtp_from_name', 'GradeView')); ?>">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label small fw-bold">SMTP Host</label>
+                                                <input type="text" name="smtp_host" class="form-control" value="<?php echo htmlspecialchars(getSystemSetting($pdo, 'smtp_host', 'smtp.gmail.com')); ?>">
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label small fw-bold">Port</label>
+                                                <input type="number" name="smtp_port" class="form-control" value="<?php echo htmlspecialchars(getSystemSetting($pdo, 'smtp_port', '587')); ?>">
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label small fw-bold">Encryption</label>
+                                                <select name="smtp_encryption" class="form-select">
+                                                    <option value="tls" <?php echo getSystemSetting($pdo, 'smtp_encryption', 'tls') === 'tls' ? 'selected' : ''; ?>>TLS</option>
+                                                    <option value="ssl" <?php echo getSystemSetting($pdo, 'smtp_encryption', 'tls') === 'ssl' ? 'selected' : ''; ?>>SSL</option>
+                                                    <option value="none" <?php echo getSystemSetting($pdo, 'smtp_encryption', 'tls') === 'none' ? 'selected' : ''; ?>>None</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label small fw-bold">SMTP Username</label>
+                                                <input type="text" name="smtp_username" class="form-control" value="<?php echo htmlspecialchars(getSystemSetting($pdo, 'smtp_username', '')); ?>">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label small fw-bold">SMTP Password / App Password</label>
+                                                <div class="input-group">
+                                                    <input type="password" name="smtp_password" id="smtp_password" class="form-control" value="<?php echo htmlspecialchars(getSystemSetting($pdo, 'smtp_password', '')); ?>">
+                                                    <span class="input-group-text" onclick="toggleVisibility('smtp_password', 'smtp_eye')">
+                                                        <i class="fas fa-eye" id="smtp_eye"></i>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div class="col-12 text-end">
+                                                <button type="submit" name="update_smtp_settings" class="btn btn-primary"><i class="fas fa-save me-2"></i>Save SMTP Settings</button>
+                                            </div>
+                                        </form>
+                                        <div class="alert alert-info border-0 shadow-sm mt-3">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            <strong>Gmail users:</strong> Use an <a href="https://support.google.com/accounts/answer/185833" target="_blank">App Password</a> instead of your regular password. Also enable 2-Step Verification in your Google Account.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade <?php echo $active_sub_tab === 'broadcast' ? 'show active' : ''; ?>" id="pills-broadcast">
+                                <?php
+                                $role_access_map = [
+                                    'admin' => 'Registrar/Admins', 'teacher' => 'Teachers',
+                                    'student' => 'Students', 'all' => 'All Senders'
+                                ];
+                                ?>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="card border-0 shadow-sm">
+                                            <div class="card-header bg-white fw-bold">Add New Template</div>
+                                            <div class="card-body">
+                                                <form method="POST">
+                                                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                                    <div class="mb-3"><label class="form-label">Title</label><input type="text" name="title" class="form-control" required placeholder="e.g., Exam Reminder"></div>
+                                                    <div class="mb-3"><label class="form-label">Message</label><textarea name="message" class="form-control" rows="4" required placeholder="Enter template message..."></textarea></div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Visible To</label>
+                                                        <select name="role_access" class="form-select" required>
+                                                            <option value="admin">Registrar/Admins Only</option>
+                                                            <option value="teacher">Teachers Only</option>
+                                                            <option value="student">Students Only</option>
+                                                            <option value="all">All Senders (Admins & Teachers)</option>
+                                                        </select>
+                                                    </div>
+                                                    <button type="submit" name="add_broadcast_template" class="btn btn-primary w-100">Add Template</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <div class="card border-0 shadow-sm">
+                                            <div class="card-header bg-white fw-bold">Manage Broadcast Templates</div>
+                                            <div class="card-body p-0">
+                                                <div class="table-responsive">
+                                                    <table class="table table-hover mb-0">
+                                                        <thead class="table-light"><tr><th>Title</th><th>Visible To</th><th>Actions</th></tr></thead>
+                                                        <tbody>
+                                                            <?php foreach ($broadcast_templates as $template): ?>
+                                                            <tr>
+                                                                <td class="fw-bold"><?php echo htmlspecialchars($template['title']); ?></td> 
+                                                                <td><span class="badge bg-secondary"><?php echo $role_access_map[$template['role_access']] ?? ucfirst($template['role_access']); ?></span></td>
+                                                                <td>
+                                                                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editTemplateModal" data-id="<?php echo $template['id']; ?>" data-title="<?php echo htmlspecialchars($template['title']); ?>" data-message="<?php echo htmlspecialchars($template['message']); ?>" data-access="<?php echo $template['role_access']; ?>"><i class="fas fa-edit"></i></button>
+                                                                    <form method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this template?');">
+                                                                        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                                                        <input type="hidden" name="template_id" value="<?php echo $template['id']; ?>">
+                                                                        <button type="submit" name="delete_broadcast_template" class="btn btn-sm btn-outline-danger" title="Delete Template"><i class="fas fa-trash"></i></button>
+                                                                    </form>
+                                                                </td>
+                                                            </tr>
+                                                            <?php endforeach; ?>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1206,15 +2205,34 @@ $subjects = $all_subjects;
                                 <h5>Add New Subject</h5>
                             </div>
                             <div class="card-body">
-                                <form method="POST">
+                                <form method="POST" id="gradingPolicyForm">
+                                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                                     <div class="row">
-                                        <div class="col-md-4">
+                                        <div class="col-md-2">
                                             <input type="text" class="form-control mb-3" name="name"
                                                 placeholder="Subject Name" required>
                                         </div>
-                                        <div class="col-md-4">
+                                        <div class="col-md-2">
                                             <input type="text" class="form-control mb-3" name="description"
                                                 placeholder="Description">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <input type="text" class="form-control mb-3" name="target_course" placeholder="Courses (e.g. BSCS,BSIT)">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <input type="text" class="form-control mb-3" name="target_year_level" placeholder="Years (e.g. 1st,2nd)">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <select class="form-select mb-3" name="teacher_id">
+                                                <option value="">Assign to Teacher (Optional)</option>
+                                                <?php foreach ($staff_users as $user):
+                                                    if ($user['role'] == 'teacher'): ?>
+                                                        <option value="<?php echo $user['id']; ?>">
+                                                            <?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?>
+                                                        </option>
+                                                    <?php endif;
+                                                endforeach; ?>
+                                            </select>
                                         </div>
                                     </div>
                                     <button type="submit" name="add_subject" class="btn btn-primary">Add
@@ -1223,53 +2241,83 @@ $subjects = $all_subjects;
                             </div>
                         </div>
 
-                        <div class="card">
-                            <div class="card-header">
-                                <h5>All Subjects</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-striped">
-                                        <thead>
-                                            <tr>
-                                                <th>#</th>
-                                                <th>Name</th>
-                                                <th>Code</th>
-                                                <th>Description</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php $i = 1; foreach ($subjects as $subject): ?>
-                                                <tr id="subject-row-<?php echo $subject['id']; ?>">
-                                                    <td><?php echo $i++; ?></td>
-                                                    <td><?php echo $subject['name']; ?></td>
-                                                    <td><?php echo $subject['code']; ?></td>
-                                                    <td><?php echo $subject['description']; ?></td>
-                                                    <td>
-                                                        <a href="print_grade.php?subject_id=<?php echo $subject['id']; ?>" target="_blank" class="btn btn-sm btn-outline-info me-1">
-                                                            <i class="fas fa-print"></i> Report
-                                                        </a>
-                                                        <button class="btn btn-sm btn-outline-primary"
-                                                            data-bs-toggle="modal" data-bs-target="#editSubjectModal"
-                                                            data-id="<?php echo $subject['id']; ?>"
-                                                            data-name="<?php echo $subject['name']; ?>"
-                                                            data-code="<?php echo $subject['code']; ?>"
-                                                            data-description="<?php echo $subject['description']; ?>">
-                                                            <i class="fas fa-edit"></i> Edit
-                                                        </button>
-                                                        <a href="?action=delete_subject&id=<?php echo $subject['id']; ?>"
-                                                            class="btn btn-sm btn-outline-danger"
-                                                            onclick="return confirm('Are you sure you want to delete this subject? This will also delete all grades associated with it.')">
-                                                            <i class="fas fa-trash"></i> Delete
-                                                        </a>
-                                                    </td>
-                                                </tr>
-                                            <?php endforeach; ?>
-                                        </tbody>
-                                    </table>
+                        <h5 class="mb-3 fw-bold text-secondary"><i class="fas fa-list-ul me-2"></i>Subject Enrollment Lists</h5>
+                        <div class="accordion" id="adminSubjectsAccordion">
+                            <?php if (empty($subjects)): ?>
+                                <div class="card border-0 shadow-sm">
+                                    <div class="card-body text-center text-muted p-5">
+                                        <p class="mb-0">No subjects found. Add one using the form above.</p>
+                                    </div>
                                 </div>
-                            </div>
+                            <?php else: ?>
+                                <?php $idx = 0; foreach ($subjects as $subject_id => $subject_data): $idx++; ?>
+                                    <div class="accordion-item" id="subject-row-<?php echo $subject_id; ?>">
+                                        <h2 class="accordion-header" id="admin-heading-<?php echo $subject_id; ?>">
+                                            <button class="accordion-button <?php echo $idx > 1 ? 'collapsed' : ''; ?>" type="button" data-bs-toggle="collapse" data-bs-target="#admin-collapse-<?php echo $subject_id; ?>" aria-expanded="<?php echo $idx === 1 ? 'true' : 'false'; ?>" aria-controls="admin-collapse-<?php echo $subject_id; ?>">
+                                                <div class="d-flex w-100 justify-content-between align-items-center pe-4">
+                                                    <span class="fw-bold"><?php echo htmlspecialchars($subject_data['subject_name']); ?> (<?php echo htmlspecialchars($subject_data['subject_code'] ?? 'N/A'); ?>)</span>
+                                                    <span class="badge bg-secondary"><?php echo htmlspecialchars($subject_data['teacher_first'] ? $subject_data['teacher_first'] . ' ' . $subject_data['teacher_last'] : 'Unassigned'); ?></span>
+                                                    <?php if ($subject_data['status'] === 'finalized'): ?>
+                                                        <span class="badge bg-danger"><i class="fas fa-lock me-1"></i> Finalized</span>
+                                                    <?php else: ?>
+                                                        <span class="badge bg-success"><i class="fas fa-lock-open me-1"></i> Open</span>
+                                                    <?php endif; ?>
+
+                                                    <span class="badge bg-primary rounded-pill"><?php echo count($subject_data['students']); ?> Students</span>
+                                                </div>
+                                            </button>
+                                        </h2>
+                                        <div id="admin-collapse-<?php echo $subject_id; ?>" class="accordion-collapse collapse <?php echo $idx === 1 ? 'show' : ''; ?>" aria-labelledby="admin-heading-<?php echo $subject_id; ?>" data-bs-parent="#adminSubjectsAccordion">
+                                            <div class="accordion-body">
+                                                <div class="d-flex justify-content-between align-items-center p-2 bg-light border-bottom mb-2">
+                                                    <div><small><strong>Restrictions:</strong> Course: <?php echo htmlspecialchars($subject_data['target_course'] ?? 'Any'); ?>, Year: <?php echo htmlspecialchars($subject_data['target_year_level'] ?? 'Any'); ?></small></div>
+                                                    <div>
+                                                        <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#enrollStudentsModal" data-subject-id="<?php echo htmlspecialchars($subject_id); ?>" data-subject-name="<?php echo htmlspecialchars($subject_data['subject_name'] ?? ''); ?>" title="Import enrollees from file"><i class="fas fa-file-import"></i> Import Enrollees</button>
+                                                        <a href="print_grade.php?subject_id=<?php echo htmlspecialchars($subject_id); ?>" target="_blank" class="btn btn-sm btn-outline-info"><i class="fas fa-print"></i> Report</a>
+                                                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editSubjectModal"
+                                                            data-id="<?php echo htmlspecialchars($subject_id); ?>"
+                                                            data-name="<?php echo htmlspecialchars($subject_data['subject_name'] ?? ''); ?>"
+                                                            data-code="<?php echo htmlspecialchars($subject_data['subject_code'] ?? ''); ?>"
+                                                            data-description="<?php echo htmlspecialchars($subject_data['description'] ?? ''); ?>"
+                                                           
+                                                            data-target-course="<?php echo htmlspecialchars($subject_data['target_course'] ?? ''); ?>"
+                                                            data-target-year="<?php echo htmlspecialchars($subject_data['target_year_level'] ?? ''); ?>"><i class="fas fa-edit"></i> Edit</button>
+                                                        <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteSubjectModal" data-id="<?php echo htmlspecialchars($subject_id); ?>" data-name="<?php echo htmlspecialchars($subject_data['subject_name'] ?? ''); ?>"><i class="fas fa-trash"></i> Delete</button>
+                                                        <form method="POST" class="d-inline">
+                                                            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                                                            <input type="hidden" name="subject_id" value="<?php echo htmlspecialchars($subject_id); ?>">
+                                                            <?php if ($subject_data['status'] !== 'finalized'): ?>
+                                                                <button type="submit" name="finalize_subject" class="btn btn-sm btn-outline-warning" onclick="return confirm('Finalizing this subject will lock all associated grade entries for teachers. Are you sure?')"><i class="fas fa-lock"></i> Finalize</button>
+                                                            <?php else: ?>
+                                                                <button type="submit" name="reopen_subject" class="btn btn-sm btn-outline-secondary"><i class="fas fa-lock-open"></i> Re-open</button>
+                                                            <?php endif; ?>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                                <?php if (empty($subject_data['students'])): ?>
+                                                    <div class="p-3 text-center text-muted">No students are enrolled in this subject.</div>
+                                                <?php else: ?>
+                                                    <div class="table-responsive">
+                                                        <table class="table table-hover table-sm mb-0">
+                                                            <thead class="table-light"><tr><th class="ps-3">#</th><th>Student Name</th><th>Username</th><th>Course & Year</th></tr></thead>
+                                                            <tbody>
+                                                                <?php $i = 1; foreach ($subject_data['students'] as $student): ?>
+                                                                    <tr>
+                                                                        <td class="ps-3"><?php echo $i++; ?></td>
+                                                                        <td class="fw-semibold"><?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?></td>
+                                                                        <td><span class="badge bg-light text-dark border">@<?php echo htmlspecialchars($student['username']); ?></span></td>
+                                                                        <td><small><?php echo htmlspecialchars($student['course'] . ' - ' . $student['year_level']); ?></small></td>
+                                                                    </tr>
+                                                                <?php endforeach; ?>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -1277,18 +2325,33 @@ $subjects = $all_subjects;
         </div>
     </div>
 
+    <?php include 'footer.php'; ?>
+
     <!-- Edit User Modal -->
     <div class="modal fade" id="editUserModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header">
+                <div class="modal-header bg-gradient text-white">
                     <h5 class="modal-title">Edit User</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <form method="POST">
+                <form method="POST" enctype="multipart/form-data">
                     <div class="modal-body">
+                        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                         <input type="hidden" name="search_context" value="<?php echo htmlspecialchars($search_user); ?>">
                         <input type="hidden" name="user_id" id="edit_user_id">
+
+                        <div class="text-center mb-3">
+                            <img src="uploads/avatars/default.png" id="edit_profile_picture_preview" class="rounded-circle cropper-preview" style="width: 100px; height: 100px; object-fit: cover; border: 2px solid #eee;">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Update Profile Picture</label>
+                                <input type="file" class="form-control form-control-sm cropper-file-input" name="profile_picture" accept="image/jpeg,image/png,image/gif">
+                            <input type="hidden" name="cropped_image_data" class="cropper-data">
+                            <div class="form-text">Optional. Max 2MB. JPG, PNG, GIF.</div>
+                        </div>
+                        <hr>
+
                         <div class="mb-3">
                             <label class="form-label">Username</label>
                             <input type="text" class="form-control" name="username" id="edit_username" required>
@@ -1315,11 +2378,15 @@ $subjects = $all_subjects;
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Role</label>
-                            <select class="form-select" name="role" id="edit_role" required>
+                            <select class="form-select" name="role" id="edit_role" required onchange="toggleEditStudentFields(this.value)">
                                 <option value="admin">Admin</option>
                                 <option value="teacher">Teacher</option>
                                 <option value="student">Student</option>
                             </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Phone Number</label>
+                            <input type="text" class="form-control" name="phone_number" id="edit_phone_number">
                         </div>
                         <div class="row" id="edit_student_fields">
                             <div class="col-md-6 mb-3">
@@ -1330,15 +2397,47 @@ $subjects = $all_subjects;
                                 <label class="form-label">Year Level</label>
                                 <input type="text" class="form-control" name="year_level" id="edit_year_level">
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">Phone Number</label>
-                                <input type="text" class="form-control" name="phone_number" id="edit_phone_number">
+                            <div class="col-12 mb-3">
+                                <label class="form-label">Home Address</label>
+                                <input type="text" class="form-control" name="home_address" id="edit_home_address" placeholder="e.g., 123 Main St., Brgy. Sample">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">City/Municipality</label>
+                                <input type="text" class="form-control" name="city" id="edit_city">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Province</label>
+                                <input type="text" class="form-control" name="province" id="edit_province">
+                            </div>
+                            <div class="col-12 mt-3"><h6 class="text-primary border-top pt-3">Guardian Information</h6></div>
+                            <div class="col-md-8 mb-3">
+                                <label class="form-label">Guardian Name</label>
+                                <input type="text" class="form-control" name="guardian_name" id="edit_guardian_name">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Guardian Status</label>
+                                <select class="form-select" name="guardian_status" id="edit_guardian_status">
+                                    <option value="">-- Select --</option>
+                                    <option>Single</option><option>Married</option><option>Widowed</option><option>Separated</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Guardian Phone</label>
+                                <input type="text" class="form-control" name="guardian_phone" id="edit_guardian_phone">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Guardian Occupation</label>
+                                <input type="text" class="form-control" name="guardian_occupation" id="edit_guardian_occupation">
+                            </div>
+                            <div class="col-12 mb-3">
+                                <label class="form-label">Guardian Address</label>
+                                <input type="text" class="form-control" name="guardian_address" id="edit_guardian_address">
                             </div>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" name="update_user" class="btn btn-primary">Update User</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-arrow-left me-2"></i>Cancel</button>
+                        <button type="submit" name="update_user" class="btn btn-primary"><i class="fas fa-save me-2"></i>Update User</button>
                     </div>
                 </form>
             </div>
@@ -1349,30 +2448,29 @@ $subjects = $all_subjects;
     <div class="modal fade" id="changePasswordModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header">
+                <div class="modal-header bg-gradient text-white">
                     <h5 class="modal-title">Change Password</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <form method="POST" id="changePasswordForm">
                     <div class="modal-body">
+                        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                         <input type="hidden" name="search_context" value="<?php echo htmlspecialchars($search_user); ?>">
                         <input type="hidden" name="user_id" id="password_user_id">
                         <div class="mb-4">
                             <label class="form-label">Username</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light"><i class="fas fa-user"></i></span>
-                                <input type="text" class="form-control bg-light fw-bold" name="username" id="password_username" readonly>
+                            <input type="text" class="form-control fw-bold" name="username" id="password_username" readonly>
                             </div>
                             <div class="form-text">You are resetting the security credentials for this account.</div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">New Password (Min 8 characters)</label>
                             <div class="input-group">
-                                <input type="password" class="form-control" name="new_password" id="change_password_field"
-                                    required>
-                                <span class="input-group-text password-toggle"
-                                    onclick="togglePassword('change_password_field', 'change_password_icon')">
-                                    <i class="fas fa-eye" id="change_password_icon"></i>
+                                <input type="password" class="form-control" name="new_password" id="change_password_field" required>
+                                <span class="input-group-text password-toggle">
+                                    <i class="fas fa-eye"></i>
                                 </span>
                             </div>
                             <!-- Real-time Strength Indicator -->
@@ -1384,20 +2482,119 @@ $subjects = $all_subjects;
                         <div class="mb-3">
                             <label class="form-label">Confirm Password</label>
                             <div class="input-group">
-                                <input type="password" class="form-control" name="confirm_password"
-                                    id="confirm_password_field" required>
-                                <span class="input-group-text password-toggle"
-                                    onclick="togglePassword('confirm_password_field', 'confirm_password_icon')">
-                                    <i class="fas fa-eye" id="confirm_password_icon"></i>
+                                <input type="password" class="form-control" name="confirm_password" id="confirm_password_field" required>
+                                <span class="input-group-text password-toggle">
+                                    <i class="fas fa-eye"></i>
                                 </span>
                             </div>
                             <div class="invalid-feedback" id="change_cpass_feedback" style="display: none; color: #dc3545; font-size: 0.8rem; margin-top: 5px;">Passwords do not match</div>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" name="update_password" class="btn btn-primary">Change Password</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-arrow-left me-2"></i>Cancel</button>
+                        <button type="submit" name="update_password" class="btn btn-primary"><i class="fas fa-key me-2"></i>Change Password</button>
                     </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Broadcast Notification Modal -->
+    <div class="modal fade" id="broadcastNotificationModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title"><i class="fas fa-bullhorn me-2"></i>Broadcast Notification</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="POST" id="broadcastForm">
+                    <div class="modal-body">
+                        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                        <div class="mb-3">
+                            <label class="form-label">Target Audience</label>
+                            <div class="p-3 border rounded">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="" id="targetAll">
+                                    <label class="form-check-label fw-bold" for="targetAll">All Users</label>
+                                </div>
+                                <hr class="my-2">
+                                <div class="form-check">
+                                    <input class="form-check-input target-group-checkbox" type="checkbox" name="target_groups[]" value="admin" id="targetAdmins">
+                                    <label class="form-check-label" for="targetAdmins">Admins</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input target-group-checkbox" type="checkbox" name="target_groups[]" value="teacher" id="targetTeachers">
+                                    <label class="form-check-label" for="targetTeachers">Teachers</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input target-group-checkbox" type="checkbox" name="target_groups[]" value="student" id="targetStudents">
+                                    <label class="form-check-label" for="targetStudents">Students</label>
+                                </div>
+                            </div>
+                            <div class="form-text">Select one or more groups to receive the broadcast.</div>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small">Quick Messages</label>
+                            <div>
+                                <?php foreach ($broadcast_templates as $template):
+                                    if ($template['role_access'] === 'admin' || $template['role_access'] === 'all'): ?>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary mb-1" onclick="setBroadcastMessage('<?php echo htmlspecialchars($template['message'], ENT_QUOTES); ?>')"><?php echo htmlspecialchars($template['title']); ?></button>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </div>
+                        </div> 
+                        <div class="row g-2 mb-2">
+                            <div class="col-7">
+                                <label class="form-label small">Set Date</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="text" class="form-control form-control-sm" id="broadcast_date_picker" placeholder="Select a date..." readonly>
+                                    <button class="btn btn-outline-primary" type="button" id="insert_date_btn" title="Insert Date"><i class="fas fa-arrow-down"></i></button>
+                                </div>
+                            </div>
+                            <div class="col-5">
+                                <label class="form-label small">Set Time</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="text" class="form-control form-control-sm" id="broadcast_time_picker" placeholder="Select a time..." readonly>
+                                    <button class="btn btn-outline-info" type="button" id="insert_time_btn" title="Insert Time"><i class="fas fa-arrow-down"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Message</label>
+                            <textarea class="form-control" id="broadcastMessage" name="message" rows="5" required placeholder="Enter your broadcast message here..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" name="broadcast_notification" class="btn btn-warning">Send Broadcast</button></div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Broadcast Template Modal -->
+    <div class="modal fade" id="editTemplateModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-gradient text-white">
+                    <h5 class="modal-title">Edit Broadcast Template</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="POST">
+                    <div class="modal-body">
+                        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                        <input type="hidden" name="template_id" id="edit_template_id">
+                        <div class="mb-3"><label class="form-label">Title</label><input type="text" name="title" id="edit_template_title" class="form-control" required></div>
+                        <div class="mb-3"><label class="form-label">Message</label><textarea name="message" id="edit_template_message" class="form-control" rows="4" required></textarea></div>
+                        <div class="mb-3">
+                            <label class="form-label">Visible To</label>
+                            <select name="role_access" id="edit_template_access" class="form-select" required>
+                                <option value="admin">Registrar/Admins Only</option>
+                                <option value="teacher">Teachers Only</option>
+                                <option value="student">Students Only</option>
+                                <option value="all">All Senders (Admins & Teachers)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" name="update_broadcast_template" class="btn btn-primary">Save Changes</button></div>
                 </form>
             </div>
         </div>
@@ -1407,12 +2604,13 @@ $subjects = $all_subjects;
     <div class="modal fade" id="editSubjectModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header">
+                <div class="modal-header bg-gradient text-white">
                     <h5 class="modal-title">Edit Subject</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <form method="POST">
                     <div class="modal-body">
+                        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                         <input type="hidden" name="subject_id" id="edit_subject_id">
                         <div class="mb-3">
                             <label class="form-label">Subject Name</label>
@@ -1426,10 +2624,59 @@ $subjects = $all_subjects;
                             <label class="form-label">Description</label>
                             <input type="text" class="form-control" name="description" id="edit_subject_description">
                         </div>
+                        <div class="mb-3">
+                            <label class="form-label">Target Course(s)</label>
+                            <input type="text" class="form-control" name="target_course" id="edit_subject_target_course" placeholder="e.g. BSCS, BSIT">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Target Year Level(s)</label>
+                            <input type="text" class="form-control" name="target_year_level" id="edit_subject_target_year" placeholder="e.g. 1st Year, 2nd Year">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Assign Teacher</label>
+                            <select class="form-select" name="teacher_id" id="edit_subject_teacher">
+                                <option value="">Unassigned</option>
+                                <?php foreach ($staff_users as $user):
+                                    if ($user['role'] == 'teacher'): ?>
+                                        <option value="<?php echo $user['id']; ?>"><?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?></option>
+                                    <?php endif;
+                                endforeach; ?>
+                            </select>
+                        </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" name="update_subject" class="btn btn-primary">Update Subject</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-arrow-left me-2"></i>Cancel</button>
+                        <button type="submit" name="update_subject" class="btn btn-primary"><i class="fas fa-save me-2"></i>Update Subject</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Subject Confirmation Modal (for Admin) -->
+    <div class="modal fade" id="deleteSubjectModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>Confirm Deletion</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="admin.php?tab=subjects" method="POST">
+                    <div class="modal-body">
+                        <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                        <input type="hidden" name="action" value="delete_subject"> 
+                        <input type="hidden" name="subject_id" id="delete_subject_id_admin">
+                        <p>This action is irreversible. You will permanently delete the subject <strong id="delete_subject_name_text_admin"></strong> and all associated grade records.</p>
+                        <p>To confirm, please type the subject's name below:</p>
+                        <div class="mb-3">
+                            <input type="text" class="form-control" id="delete_confirm_input_admin" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-arrow-left me-2"></i>Cancel</button>
+                        <button type="submit" id="confirmDeleteBtnAdmin" class="btn btn-danger" disabled>
+                            <i class="fas fa-trash me-2"></i>I understand, delete this subject
+                        </button>
                     </div>
                 </form>
             </div>
@@ -1440,35 +2687,45 @@ $subjects = $all_subjects;
     <div class="modal fade" id="viewUserProfileModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Student Credentials & Profile</h5>
+                <div class="modal-header bg-gradient text-white">
+                    <h5 class="modal-title"><i class="fas fa-id-card me-2"></i>User Profile Details</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body p-4">
                     <div class="row">
-                        <div class="col-md-6 border-end">
-                            <h6 class="text-primary border-bottom pb-2">Account Credentials</h6>
-                            <p><strong>Username:</strong> <span id="view_username"></span></p>
-                            <p><strong>Email:</strong> <span id="view_email"></span></p>
-                            <p><strong>Role:</strong> <span class="badge bg-secondary" id="view_role"></span></p>
-                            
-                            <h6 class="text-primary border-bottom pb-2 mt-4">Personal Information</h6>
-                            <p><strong>Full Name:</strong> <span id="view_fullname"></span></p>
-                            <p><strong>Age / Sex:</strong> <span id="view_agesex"></span></p>
-                            <p><strong>Birth Date:</strong> <span id="view_bdate"></span></p>
-                            <p><strong>Phone:</strong> <span id="view_phone"></span></p>
+                        <div class="col-lg-4 text-center border-end pe-lg-4 mb-4 mb-lg-0 d-flex flex-column align-items-center">
+                            <img src="image/default_avatar.png" id="view_profile_picture" class="rounded-circle mb-3 avatar-lg" onerror="this.onerror=null;this.src='image/default_avatar.png';">
+                            <h4 class="mb-0 fw-bold" id="view_fullname_header"></h4>
+                            <p class="text-muted" id="view_username_header"></p>
+                            <div id="view_student_subheader" style="display: none;">
+                                <p class="text-info fw-bold"><span id="view_course"></span> - <span id="view_year"></span></p>
+                            </div>
+                            <hr class="w-100">
+                            <h6 class="text-primary align-self-start">Account Credentials</h6>
+                            <p class="text-start mb-1 w-100"><strong>Email:</strong> <span id="view_email"></span></p>
+                            <p class="text-start mb-1 w-100"><strong>Role:</strong> <span class="badge bg-secondary" id="view_role"></span></p>
                         </div>
-                        <div class="col-md-6">
-                            <h6 class="text-primary border-bottom pb-2">Academic Info</h6>
-                            <p><strong>Course:</strong> <span id="view_course"></span></p>
-                            <p><strong>Year Level:</strong> <span id="view_year"></span></p>
-                            <p><strong>Address:</strong> <span id="view_address"></span></p>
+                        <div class="col-lg-8 ps-lg-4">
+                            <h5 class="text-primary fw-bold border-bottom pb-2 mb-3"><i class="fas fa-user-circle me-2"></i>Personal Information</h5>
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-4"><p class="mb-1 small text-muted">Suffix</p><strong id="view_suffix">N/A</strong></div>
+                                <div class="col-md-4"><p class="mb-1 small text-muted">Birth Date</p><strong id="view_bdate">N/A</strong></div>
+                                <div class="col-md-4"><p class="mb-1 small text-muted">Age</p><strong id="view_age">N/A</strong></div>
+                                <div class="col-md-4"><p class="mb-1 small text-muted">Sex</p><strong id="view_sex">N/A</strong></div>
+                                <div class="col-md-8"><p class="mb-1 small text-muted">Phone Number</p><strong id="view_phone">N/A</strong></div>
+                                <div class="col-md-12"><p class="mb-1 small text-muted">Full Address</p><strong id="view_address">N/A</strong></div>
+                            </div>
 
-                            <h6 class="text-primary border-bottom pb-2 mt-4">Guardian Details</h6>
-                            <p><strong>Name:</strong> <span id="view_gname"></span></p>
-                            <p><strong>Phone:</strong> <span id="view_gphone"></span></p>
-                            <p><strong>Occupation:</strong> <span id="view_gocc"></span></p>
-                            <p><strong>Address:</strong> <span id="view_gaddress"></span></p>
+                            <div id="view_guardian_info" style="display: none;">
+                                <h5 class="text-primary fw-bold border-bottom pb-2 mb-3"><i class="fas fa-users me-2"></i>Guardian Information</h5>
+                                <div class="row g-3 mb-4">
+                                    <div class="col-md-6"><p class="mb-1 small text-muted">Guardian's Full Name</p><strong id="view_gname">N/A</strong></div>
+                                    <div class="col-md-6"><p class="mb-1 small text-muted">Guardian's Phone</p><strong id="view_gphone">N/A</strong></div>
+                                    <div class="col-md-6"><p class="mb-1 small text-muted">Guardian's Occupation</p><strong id="view_gocc">N/A</strong></div>
+                                    <div class="col-md-6"><p class="mb-1 small text-muted">Guardian's Status</p><strong id="view_gstatus">N/A</strong></div>
+                                    <div class="col-12 mt-2"><p class="mb-1 small text-muted">Guardian's Address</p><strong id="view_gaddress">N/A</strong></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1541,509 +2798,77 @@ $subjects = $all_subjects;
         </div>
     </div>
 
+
+    <!-- Enroll Students Modal -->
+    <div class="modal fade" id="enrollStudentsModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="fas fa-user-plus me-2"></i>Import Enrollees</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                    <input type="hidden" name="subject_id" id="enroll_csv_subject_id">
+                    <div class="modal-body">
+                        <p class="small text-muted mb-2">Subject: <strong id="enroll_csv_subject_name"></strong></p>
+                        <div class="alert alert-info small">Upload a CSV, TSV, TXT, or Excel (.xlsx) file containing the enrollees for this subject. Students are matched by <code>student_id</code>, <code>username</code>, or <code>email</code> (headers auto-detected). Matching students are enrolled; existing enrollments are skipped.</div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Enrollees File (CSV/TSV/Excel)</label>
+                            <input type="file" class="form-control" name="enroll_file" accept=".csv,.tsv,.txt,.xlsx,.xlsm,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
+                        </div>
+
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" name="enroll_students_import" class="btn btn-success"><i class="fas fa-file-import me-1"></i>Import Enrollees</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script>
-        // Password toggle functionality defined globally for inline onclick handlers
-        function togglePassword(passwordFieldId, iconId) {
-            var passwordField = document.getElementById(passwordFieldId);
-            var icon = document.getElementById(iconId);
-
-            if (!passwordField || !icon) return;
-
-            if (passwordField.type === "password") {
-                passwordField.type = "text";
-                icon.classList.remove('fa-eye');
-                icon.classList.add('fa-eye-slash');
-            } else {
-                passwordField.type = "password";
-                icon.classList.remove('fa-eye-slash');
-                icon.classList.add('fa-eye');
-            }
-        }
+        window.pageConfig = {
+            toastMessage: "<?php echo addslashes($message); ?>",
+            toastType: "<?php echo $message_type ?: 'info'; ?>",
+            newSubjectId: "<?php echo $_SESSION['new_subject_id'] ?? ''; ?>",
+            updatedUserId: "<?php echo $_SESSION['updated_user_id'] ?? ''; ?>",
+            activeTab: "<?php echo $active_tab; ?>",
+            subTab: "<?php echo $_GET['sub_tab'] ?? ''; ?>"
+        };
+        <?php 
+            // Clear session variables after passing them to JS
+            unset($_SESSION['new_subject_id'], $_SESSION['updated_user_id']);
+        ?>
     </script>
+    <script src="admin.js"></script>
     <script>
-        // Activate tab from URL hash
-        document.addEventListener('DOMContentLoaded', function () {
-            const sidebar = document.getElementById('sidebar');
-
-            // Live Search Logic
-            const liveSearchInput = document.getElementById('liveSearchInput');
-            const searchResultsDropdown = document.getElementById('searchResultsDropdown');
-
-            if (liveSearchInput) {
-                liveSearchInput.addEventListener('input', function() {
-                    const query = this.value.trim();
-                    if (query.length < 2) {
-                        searchResultsDropdown.classList.add('d-none');
-                        return;
-                    }
-
-                    fetch(`admin.php?ajax_search=${encodeURIComponent(query)}`)
-                        .then(response => response.json())
-                        .then(data => {
-                            searchResultsDropdown.innerHTML = '';
-                            if (data.length > 0) {
-                                data.forEach(user => {
-                                    const item = document.createElement('a');
-                                    item.href = '#';
-                                    item.className = 'list-group-item list-group-item-action border-bottom';
-                                    item.innerHTML = `
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <h6 class="mb-0 small fw-bold">${user.first_name} ${user.last_name}</h6>
-                                                <small class="text-muted">@${user.username}</small>
-                                            </div>
-                                            <span class="badge bg-light text-dark border small" style="font-size: 0.6rem;">${user.role}</span>
-                                        </div>
-                                    `;
-                                    item.addEventListener('click', (e) => {
-                                        e.preventDefault();
-                                        liveSearchInput.value = user.username;
-                                        searchResultsDropdown.classList.add('d-none');
-                                        liveSearchInput.form.submit();
-                                    });
-                                    searchResultsDropdown.appendChild(item);
-                                });
-                                searchResultsDropdown.classList.remove('d-none');
-                            } else {
-                                searchResultsDropdown.classList.add('d-none');
-                            }
-                        });
-                });
-
-                document.addEventListener('click', function(e) {
-                    if (!liveSearchInput.contains(e.target) && !searchResultsDropdown.contains(e.target)) {
-                        searchResultsDropdown.classList.add('d-none');
-                    }
-                });
-            }
-
-            const mainContent = document.getElementById('main-content');
-            const toggle = document.getElementById('sidebarToggle');
-            const overlay = document.getElementById('sidebarOverlay');
-
-            function toggleSidebar() {
-                sidebar.classList.toggle('collapsed');
-                sidebar.classList.toggle('active');
-                if(overlay) overlay.classList.toggle('active');
-                if(mainContent) mainContent.classList.toggle('expanded');
-                window.dispatchEvent(new Event('resize'));
-            }
-
-            if(toggle) toggle.addEventListener('click', toggleSidebar);
-            if(overlay) overlay.addEventListener('click', toggleSidebar);
-
-            // Auto-close sidebar on mobile when a link is clicked
-            const navLinks = sidebar.querySelectorAll('.nav-link:not(.dropdown-toggle)');
-            navLinks.forEach(link => {
-                link.addEventListener('click', () => {
-                    if (window.innerWidth <= 992 && sidebar.classList.contains('active')) {
-                        toggleSidebar();
-                    }
-                });
-            });
-
-            // Toast Initialization
-            const toastEl = document.getElementById('msgToast');
-            const toast = new bootstrap.Toast(toastEl, { autohide: true, delay: 5000 });
-            
-            <?php 
-            $display_msg = $message ?: ($_SESSION['message'] ?? '');
-            $display_type = $message_type ?: ($_SESSION['message_type'] ?? 'info');
-            if ($display_msg): ?>
-                document.getElementById('toastMsg').innerText = "<?php echo addslashes($display_msg); ?>";
-                toastEl.classList.remove('bg-success', 'bg-danger', 'bg-warning', 'bg-info');
-                toastEl.classList.add('bg-<?php echo $display_type === "danger" ? "danger" : ($display_type === "success" ? "success" : "info"); ?>');
-                toast.show();
-                <?php unset($_SESSION['message'], $_SESSION['message_type']); // Clear after showing ?>
-            <?php endif; ?>
-
-            // Highlight newly added subject
-            <?php if (isset($_SESSION['new_subject_id'])): ?>
-                const newRow = document.getElementById('subject-row-<?php echo $_SESSION['new_subject_id']; ?>');
-                if (newRow) {
-                    newRow.classList.add('row-glow-highlight');
-                    newRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-                <?php unset($_SESSION['new_subject_id']); ?>
-            <?php endif; ?>
-
-            // Highlight newly added or updated user
-            <?php if (isset($_SESSION['updated_user_id'])): ?>
-                const userRow = document.getElementById('user-row-<?php echo $_SESSION['updated_user_id']; ?>');
-                if (userRow) {
-                    userRow.classList.add('row-glow-highlight');
-                    userRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-                <?php unset($_SESSION['updated_user_id']); ?>
-            <?php endif; ?>
-
-            var triggerTabList = [].slice.call(document.querySelectorAll('a[data-bs-toggle="tab"]'))
-            triggerTabList.forEach(function (triggerEl) {
-                var tabTrigger = new bootstrap.Tab(triggerEl)
-                triggerEl.addEventListener('click', function (event) {
-                    event.preventDefault()
-                    tabTrigger.show()
-                    // Force layout recalculation when switching tabs
-                    setTimeout(() => window.dispatchEvent(new Event('resize')), 150);
-                })
-            });
-            
-            // Handle shown.bs.tab to ensure responsiveness after transition
-            document.querySelectorAll('a[data-bs-toggle="tab"]').forEach(tab => {
-                tab.addEventListener('shown.bs.tab', () => window.dispatchEvent(new Event('resize')));
-            });
-
-            // Edit User Modal
-            var editUserModal = document.getElementById('editUserModal')
-            editUserModal.addEventListener('show.bs.modal', function (event) {
-                var button = event.relatedTarget
-                var userId = button.getAttribute('data-id')
-                var username = button.getAttribute('data-username')
-                var firstName = button.getAttribute('data-firstname')
-                var lastName = button.getAttribute('data-lastname')
-                var email = button.getAttribute('data-email')
-                var role = button.getAttribute('data-role')
-                var allData = button.closest('tr').querySelector('.btn-outline-info')?.getAttribute('data-all');
-                var extra = allData ? JSON.parse(allData) : {};
-
-                var modal = this
-                modal.querySelector('#edit_user_id').value = userId
-                modal.querySelector('#edit_username').value = username
-                modal.querySelector('#edit_first_name').value = firstName
-                modal.querySelector('#edit_last_name').value = lastName
-                modal.querySelector('#edit_email').value = email
-                modal.querySelector('#edit_role').value = role
-                modal.querySelector('#edit_course').value = extra.course || ''
-                modal.querySelector('#edit_year_level').value = extra.year_level || ''
-                modal.querySelector('#edit_phone_number').value = extra.phone_number || ''
-            })
-
-            // Change Password Modal
-            var changePasswordModal = document.getElementById('changePasswordModal')
-            changePasswordModal.addEventListener('show.bs.modal', function (event) {
-                var button = event.relatedTarget
-                var userId = button.getAttribute('data-id')
-                var username = button.getAttribute('data-username')
-
-                var modal = this
-                modal.querySelector('#password_user_id').value = userId
-                modal.querySelector('#password_username').value = username
-                
-                // Reset modal state on open
-                modal.querySelector('#change_password_field').value = '';
-                modal.querySelector('#confirm_password_field').value = '';
-                modal.querySelector('#change-pw-strength-bar').style.width = '0%';
-                modal.querySelector('#change-pw-strength-text').innerText = '';
-                modal.querySelector('#change_cpass_feedback').style.display = 'none';
-                modal.querySelector('#confirm_password_field').classList.remove('is-invalid');
-            })
-
-            // Change Password Real-time Validation (Registration Style)
-            const changePassField = document.getElementById('change_password_field');
-            const confirmPassField = document.getElementById('confirm_password_field');
-            
-            if(changePassField) {
-                changePassField.addEventListener('input', function() {
-                    const val = this.value;
-                    const bar = document.getElementById('change-pw-strength-bar');
-                    const text = document.getElementById('change-pw-strength-text');
-                    let strength = 0;
-                    if (val.length >= 8) strength++;
-                    if (/[A-Z]/.test(val)) strength++;
-                    if (/[0-9]/.test(val)) strength++;
-                    if (/[^A-Za-z0-9]/.test(val)) strength++;
-                    let color = 'bg-danger', label = 'Weak', width = '25%';
-                    if (strength === 2) { color = 'bg-warning'; label = 'Fair'; width = '50%'; }
-                    else if (strength === 3) { color = 'bg-info'; label = 'Good'; width = '75%'; }
-                    else if (strength === 4) { color = 'bg-success'; label = 'Strong'; width = '100%'; }
-                    if (bar) { bar.className = 'progress-bar ' + color; bar.style.width = val.length > 0 ? width : '0%'; }
-                    if (text) text.innerText = val.length > 0 ? 'Strength: ' + label : '';
-                    if(confirmPassField.value !== "") validatePasswordMatch();
-                });
-            }
-
-            if(confirmPassField) confirmPassField.addEventListener('input', validatePasswordMatch);
-
-            function validatePasswordMatch() {
-                if(confirmPassField.value !== changePassField.value) {
-                    confirmPassField.classList.add('is-invalid');
-                    document.getElementById('change_cpass_feedback').style.display = 'block';
-                    return false;
+        /* Toggle Visibility for SMTP Password */
+        window.toggleVisibility = function(inputId, eyeId) {
+            var input = document.getElementById(inputId);
+            var eye = document.getElementById(eyeId);
+            if (input && eye) {
+                if (input.type === "password") {
+                    input.type = "text";
+                    eye.classList.remove('fa-eye');
+                    eye.classList.add('fa-eye-slash');
                 } else {
-                    confirmPassField.classList.remove('is-invalid');
-                    document.getElementById('change_cpass_feedback').style.display = 'none';
-                    return true;
+                    input.type = "password";
+                    eye.classList.remove('fa-eye-slash');
+                    eye.classList.add('fa-eye');
                 }
             }
+        };
 
-            const changePasswordForm = document.getElementById('changePasswordForm');
-            if(changePasswordForm) {
-                changePasswordForm.addEventListener('submit', function(e) {
-                    if (changePassField.value.length < 8 || !validatePasswordMatch()) {
-                        e.preventDefault();
-                    }
-                });
-            }
-
-            // Edit Subject Modal
-            var editSubjectModal = document.getElementById('editSubjectModal')
-            editSubjectModal.addEventListener('show.bs.modal', function (event) {
-                var button = event.relatedTarget
-                var subjectId = button.getAttribute('data-id')
-                var name = button.getAttribute('data-name')
-                var code = button.getAttribute('data-code')
-                var description = button.getAttribute('data-description')
-
-                var modal = this
-                modal.querySelector('#edit_subject_id').value = subjectId
-                modal.querySelector('#edit_subject_name').value = name
-                modal.querySelector('#edit_subject_code').value = code
-                modal.querySelector('#edit_subject_description').value = description
-            })
-
-            // View User Profile Modal
-            var viewUserModal = document.getElementById('viewUserProfileModal')
-            viewUserModal.addEventListener('show.bs.modal', function (event) {
-                var button = event.relatedTarget
-                var data = JSON.parse(button.getAttribute('data-all'))
-                
-                this.querySelector('#view_username').innerText = data.username
-                this.querySelector('#view_email').innerText = data.email || 'N/A'
-                this.querySelector('#view_role').innerText = data.role.toUpperCase()
-                this.querySelector('#view_fullname').innerText = data.first_name + ' ' + (data.suffix || '') + ' ' + data.last_name
-                this.querySelector('#view_agesex').innerText = data.age + ' / ' + data.sex
-                this.querySelector('#view_bdate').innerText = data.birth_date
-                this.querySelector('#view_phone').innerText = data.phone_number
-                this.querySelector('#view_course').innerText = data.course || 'N/A'
-                this.querySelector('#view_year').innerText = data.year_level || 'N/A'
-                this.querySelector('#view_address').innerText = (data.home_address || '') + ', ' + (data.city || '') + ', ' + (data.province || '')
-                this.querySelector('#view_gname').innerText = data.guardian_name || 'N/A'
-                this.querySelector('#view_gphone').innerText = data.guardian_phone || 'N/A'
-                this.querySelector('#view_gocc').innerText = data.guardian_occupation || 'N/A'
-                this.querySelector('#view_gaddress').innerText = data.guardian_address || 'N/A'
-            })
-            
-            // Monitor Performance Modal Logic
-            let adminGradeChart = null;
-            let adminDistChart = null;
-            const perfModal = document.getElementById('monitorPerformanceModal');
-            if (perfModal) {
-                perfModal.addEventListener('show.bs.modal', function(event) {
-                    const btn = event.relatedTarget;
-                    const studentId = btn.getAttribute('data-id');
-                    const studentName = btn.getAttribute('data-name');
-                    document.getElementById('perf_student_name').innerText = studentName;
-
-                    const calculateGradePointJS = (grade) => {
-                        if (grade <= 0) return "N/A";
-                        if (grade >= 90) return "1.0";
-                        if (grade >= 80) return "2.0";
-                        if (grade >= 70) return "3.0";
-                        if (grade >= 60) return "4.0";
-                        return "INC";
-                    };
-
-                    fetch(`admin.php?ajax_performance=${studentId}`)
-                        .then(res => res.json())
-                        .then(data => {
-                            const updateModalPeriodicStats = () => {
-                                if (!adminGradeChart) return;
-                                
-                                let sums = [0, 0, 0, 0];
-                                let counts = [0, 0, 0, 0];
-                                let totalSum = 0;
-                                let totalCount = 0;
-
-                                adminGradeChart.data.datasets.forEach((ds, i) => {
-                                    if (adminGradeChart.isDatasetVisible(i)) {
-                                        let subVal = 0, subPeriods = 0;
-                                        ds.data.forEach((val, idx) => {
-                                            if (val > 0) {
-                                                sums[idx] += val;
-                                                counts[idx]++;
-                                                subVal += val;
-                                                subPeriods++;
-                                            }
-                                        });
-                                        if(subPeriods > 0) {
-                                            totalSum += (subVal / subPeriods);
-                                            totalCount++;
-                                        }
-                                    }
-                                });
-
-                                const overallAvg = totalCount > 0 ? totalSum / totalCount : 0;
-                                document.getElementById('perf_avg').innerText = overallAvg.toFixed(1);
-                                document.getElementById('perf_letter').innerText = calculateGradePointJS(overallAvg);
-                                
-                                const standing = overallAvg >= 75 ? 'Passing' : (totalCount > 0 ? 'Failing' : 'No Data');
-                                document.getElementById('perf_standing').innerText = standing;
-                                document.getElementById('perf_status_text').className = 'mt-2 fw-bold ' + (standing === 'Passing' ? 'text-success' : 'text-danger');
-                                document.getElementById('perf_status_text').innerText = standing === 'Passing' ? 'Academic criteria met' : 'Improvement recommended';
-
-                                const ids = ['perf_prelim', 'perf_midterm', 'perf_prefinal', 'perf_final'];
-                                ids.forEach((id, idx) => {
-                                    const avg = counts[idx] > 0 ? (sums[idx] / counts[idx]) : 0;
-                                    const display = avg > 0 ? avg.toFixed(1) + ' (' + calculateGradePointJS(avg) + ')' : '0.0';
-                                    document.getElementById(id).innerText = display;
-                                });
-                            };
-                            
-                            document.getElementById('perf_total').innerText = data.total;
-
-                            // Cleanup existing charts
-                            if (adminGradeChart) adminGradeChart.destroy();
-                            if (adminDistChart) adminDistChart.destroy();
-
-                            // Line Chart
-                            const ctxLine = document.getElementById('adminGradeChart').getContext('2d');
-                            adminGradeChart = new Chart(ctxLine, {
-                                type: 'line',
-                                data: {
-                                    labels: ['Prelim', 'Midterm', 'Prefinal', 'Final'],
-                                    datasets: data.datasets
-                                },
-                                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100 } } }
-                            });
-
-                            // Checkbox Legend Logic
-                            const legendContainer = document.getElementById('adminGradeChartLegend');
-                            if (legendContainer) {
-                                legendContainer.innerHTML = '';
-                                adminGradeChart.data.datasets.forEach((dataset, index) => {
-                                    const div = document.createElement('div');
-                                    div.className = 'form-check form-check-inline';
-                                    div.innerHTML = `
-                                    <input class="form-check-input" type="checkbox" id="a_ds_check_${index}" checked style="cursor: pointer; transition: all 0.3s ease;">
-                                    <label class="form-check-label small fw-bold d-flex align-items-center" for="a_ds_check_${index}" style="cursor: pointer;">
-                                        <span class="me-2" style="width: 12px; height: 12px; background-color: ${dataset.borderColor}; display: inline-block; border-radius: 2px;"></span>
-                                        ${dataset.label}
-                                    </label>
-                                    `;
-                                    div.querySelector('input').addEventListener('change', (e) => {
-                                        const label = div.querySelector('label');
-                                        label.style.opacity = e.target.checked ? '1' : '0.4';
-                                        adminGradeChart.setDatasetVisibility(index, e.target.checked);
-                                        adminGradeChart.update();
-                                        updateModalPeriodicStats();
-                                    });
-                                    legendContainer.appendChild(div);
-                                });
-                            }
-
-                            // Pie Chart
-                            const ctxPie = document.getElementById('adminDistChart').getContext('2d');
-                            adminDistChart = new Chart(ctxPie, {
-                                type: 'pie',
-                                data: {
-                                    labels: Object.keys(data.distribution),
-                                    datasets: [{
-                                        data: Object.values(data.distribution),
-                                        backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#64748b']
-                                    }]
-                                },
-                                options: { responsive: true, maintainAspectRatio: false }
-                            });
-
-                            // Now that charts are initialized, update the summary stats
-                            updateModalPeriodicStats();
-                        });
-                });
-            }
-
-            // Add User Password Strength Logic
-            const addUserPassField = document.getElementById('new_password');
-            if(addUserPassField) {
-                addUserPassField.addEventListener('input', function() {
-                    const val = this.value;
-                    const bar = document.getElementById('add-pw-strength-bar');
-                    const text = document.getElementById('add-pw-strength-text');
-                    let strength = 0;
-                    if (val.length >= 8) strength++;
-                    if (/[A-Z]/.test(val)) strength++;
-                    if (/[0-9]/.test(val)) strength++;
-                    if (/[^A-Za-z0-9]/.test(val)) strength++;
-                    let color = 'bg-danger', label = 'Weak', width = '25%';
-                    if (strength === 2) { color = 'bg-warning'; label = 'Fair'; width = '50%'; }
-                    else if (strength === 3) { color = 'bg-info'; label = 'Good'; width = '75%'; }
-                    else if (strength === 4) { color = 'bg-success'; label = 'Strong'; width = '100%'; }
-                    if (bar) { bar.className = 'progress-bar ' + color; bar.style.width = val.length > 0 ? width : '0%'; }
-                    if (text) text.innerText = val.length > 0 ? 'Strength: ' + label : '';
-                });
-            }
-
-            // Fix: Globalize validatePasswordMatch to ensure it's accessible to the form submit listener
-            window.validateChangePasswordMatch = function() {
-                const pass = document.getElementById('change_password_field');
-                const confirm = document.getElementById('confirm_password_field');
-                const feedback = document.getElementById('change_cpass_feedback');
-                const isMatch = pass.value === confirm.value && pass.value !== "";
-                
-                if (!isMatch && confirm.value !== "") {
-                    confirm.classList.add('is-invalid');
-                    feedback.style.display = 'block';
-                    return false;
-                } else {
-                    confirm.classList.remove('is-invalid');
-                    feedback.style.display = 'none';
-                    return true;
-                }
-            };
-
-            // Add User Form Validation (Just like register.php but dynamic)
-            const addUserForm = document.getElementById('addUserForm');
-            if(addUserForm) {
-                addUserForm.querySelectorAll('input, select').forEach(input => {
-                    input.addEventListener('blur', function() {
-                        validateAdminField(this);
-                    });
-                });
-
-                addUserForm.addEventListener('submit', function(e) {
-                    const pass = document.getElementById('new_password').value;
-                    if (pass.length < 8) {
-                        alert("Password must be at least 8 characters long.");
-                        e.preventDefault();
-                        return;
-                    }
-                    
-                    let formValid = true;
-                    this.querySelectorAll('[required]').forEach(input => {
-                        if (!validateAdminField(input)) formValid = false;
-                    });
-                    if(!formValid) e.preventDefault();
-                });
-            }
-
-            function validateAdminField(input) {
-                let valid = true;
-                let feedback = input.nextElementSibling;
-                if (input.value.trim() === "" && input.id !== 'val_email') valid = false;
-                if (input.id === 'val_email' && input.value.trim() !== "" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.value)) valid = false;
-                
-                if (!valid) {
-                    input.classList.add('is-invalid');
-                } else {
-                    input.classList.remove('is-invalid');
-                }
-                return valid;
-            }
-        });
-
-        // Password strength indicator (optional enhancement)
-        function checkPasswordStrength(password) {
-            var strength = 0;
-            if (password.length >= 6) strength++;
-            if (password.match(/[a-z]+/)) strength++;
-            if (password.match(/[A-Z]+/)) strength++;
-            if (password.match(/[0-9]+/)) strength++;
-            if (password.match(/[$@#&!]+/)) strength++;
-
-            return strength;
-        }
+        document.addEventListener('DOMContentLoaded', function() {
+            var enrollModal=document.getElementById("enrollStudentsModal");
+            if(enrollModal){enrollModal.addEventListener("show.bs.modal",function(e){var b=e.relatedTarget;if(!b)return;var i=document.getElementById("enroll_csv_subject_id");var n=document.getElementById("enroll_csv_subject_name");if(i)i.value=b.dataset.subjectId||"";if(n)n.textContent=b.dataset.subjectName||"";});}
+            if(importModal){importModal.addEventListener("show.bs.modal",function(e){var b=e.relatedTarget;if(!b)return;var i=document.getElementById("import_grades_subject_id");var n=document.getElementById("import_grades_subject_name");if(i)i.value=b.dataset.subjectId||"";if(n)n.textContent=b.dataset.subjectName||"";});}
     </script>
 </body>
-
 </html>

@@ -1,0 +1,7 @@
+{
+  "name": "gradeview-system",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "php -S localhost:8000"
+  }
+}
