@@ -929,8 +929,8 @@ if ($filter_subject) {
     $select_fields = "s.*, MAX(sub_list.all_subs) as enrolled_subjects";
     
     $select_fields .= ", AVG(g.grade) as average,
-                       fail_counts.prelim_fails, fail_counts.midterm_fails, 
-                       fail_counts.prefinal_fails, fail_counts.final_fails";
+                       MAX(fail_counts.prelim_fails) as prelim_fails, MAX(fail_counts.midterm_fails) as midterm_fails, 
+                       MAX(fail_counts.prefinal_fails) as prefinal_fails, MAX(fail_counts.final_fails) as final_fails";
     $join_clause = "LEFT JOIN grades g ON s.id = g.student_id AND g.teacher_id = ?
                     LEFT JOIN (
                         SELECT 
