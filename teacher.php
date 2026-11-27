@@ -1915,9 +1915,11 @@ $students = $students_stmt->fetchAll();
                                                             <?php
                                                             $fileUrl = $scheme . '://' . $host . $encodedBase . '/uploads/grade_imports/' . rawurlencode($gf['stored'] ?? '');
                                                             // The Excel desktop "Open" uses a file:/// path, which only resolves on
-                                                            // the client when the app runs locally (localhost XAMPP). On a cloud host
-                                                            // the server path is unreachable, so we hide Open there; use the in-browser
-                                                            // View -> edit -> Save instead (no download, no read-only warning).
+                                                            // Open always launches the Excel desktop software. On localhost we
+                                                            // use the real file:/// path (editable/savable). On a cloud host we pass
+                                                            // the public web URL to Excel (ms-excel:ofe|u|https://...); Excel opens it
+                                                            // (read-only for web files) — to edit & save back, use the in-browser Save
+                                                            // or Download -> edit -> Import.
                                                             $isLocalHost = in_array(strtolower(parse_url($host, PHP_URL_HOST) ?: $host), ['localhost', '127.0.0.1', '::1'], true) || preg_match('/^127\./', (string)($host));
                                                             $absPath = $isLocalHost ? realpath($gradeDir . '/' . ($gf['stored'] ?? '')) : false;
                                                             $localFileUrl = '';
@@ -1928,13 +1930,10 @@ $students = $students_stmt->fetchAll();
                                                                 }, $p);
                                                                 $localFileUrl = 'file:///' . ltrim($p, '/');
                                                             }
-                                                            $msExcelUrl = $localFileUrl ? 'ms-excel:ofe|u|' . $localFileUrl : '';
+                                                            $openTarget = $localFileUrl ?: $fileUrl;
+                                                            $msExcelUrl = 'ms-excel:ofe|u|' . $openTarget;
                                                             ?>
-                                                            <?php if ($msExcelUrl): ?>
-                                                            <a href="<?php echo htmlspecialchars($msExcelUrl, ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-sm btn-outline-info" title="Open in Excel desktop app (editable — edit, save, then Compute)"><i class="fas fa-external-link-alt me-1"></i>Open</a>
-                                                            <?php else: ?>
-                                                            <button type="button" class="btn btn-sm btn-outline-info js-view-grade" data-stored="<?php echo htmlspecialchars($gf['stored'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" data-name="<?php echo htmlspecialchars($gf['original_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" title="Open the grade sheet (edit &amp; save in your browser)"><i class="fas fa-external-link-alt me-1"></i>Open</button>
-                                                            <?php endif; ?>
+                                                            <a href="<?php echo htmlspecialchars($msExcelUrl, ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-sm btn-outline-info" title="Open in Excel desktop app"><i class="fas fa-external-link-alt me-1"></i>Open</a>
                                                             <a href="<?php echo htmlspecialchars($fileUrl, ENT_QUOTES, 'UTF-8'); ?>" download="<?php echo htmlspecialchars($gf['original_name'] ?? 'grades.xlsx', ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-sm btn-outline-primary" title="Download a writable copy, edit it in Excel, save, then import the updated file"><i class="fas fa-download me-1"></i>Download</a>
                                                             <?php if ((int)($gf['subject_id'] ?? 0) > 0): ?>
                                                             <form method="POST" class="d-inline m-0">
