@@ -15,9 +15,12 @@ RUN { \
     echo 'display_errors=Off'; \
     echo 'log_errors=On'; \
     echo 'error_log=/tmp/php_errors.log'; \
-    echo 'memory_limit=256M'; \
-    echo 'upload_max_filesize=20M'; \
+    echo 'memory_limit=512M'; \
+    echo 'max_execution_time=120'; \
+    echo 'max_input_time=120'; \
     echo 'post_max_size=25M'; \
+    echo 'upload_max_filesize=20M'; \
+    echo 'session.save_path=/tmp'; \
 } > /usr/local/etc/php/conf.d/production.ini
 
 # Add Composer
