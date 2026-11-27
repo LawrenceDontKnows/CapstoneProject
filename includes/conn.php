@@ -116,6 +116,11 @@ register_shutdown_function(function() {
             $error['line']
         );
         error_log($log, 3, '/tmp/php_errors.log');
+        // Show fatal details only when ?debug=1 is present (for troubleshooting).
+        if (defined('APP_ENV') && APP_ENV === 'production' && !headers_sent()
+            && isset($_GET['debug']) && $_GET['debug'] === '1') {
+            echo "DEBUG FATAL: " . htmlspecialchars($error['message'] . " in " . $error['file'] . ":" . $error['line']);
+        }
     }
 });
 
