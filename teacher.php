@@ -1396,7 +1396,7 @@ $students = $students_stmt->fetchAll();
                                                                         <?php if ($avg <= 0): ?>
                                                                             <span class="badge bg-secondary">IP (In Progress)</span>
                                                                         <?php else: ?>
-                                                                            <span class="badge <?php echo getGradeColor($avg); ?>"><?php echo number_format($avg, 2); ?></span>
+                                                                            <span class="badge bg-<?php echo getGradeColor($avg); ?>"><?php echo number_format($avg, 2); ?></span>
                                                                         <?php endif; ?>
                                                                     </td>
                                                                     <td class="pe-3">
