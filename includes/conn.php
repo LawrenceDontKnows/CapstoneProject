@@ -125,7 +125,12 @@ set_exception_handler(function($e) {
     error_log("Uncaught " . get_class($e) . ": " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
     if (defined('APP_ENV') && APP_ENV === 'production' && !headers_sent()) {
         http_response_code(500);
-        echo 'A system error occurred. Please try again later.';
+        // Show details only when ?debug=1 is present (for troubleshooting).
+        if (isset($_GET['debug']) && $_GET['debug'] === '1') {
+            echo 'DEBUG: ' . htmlspecialchars(get_class($e) . ': ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+        } else {
+            echo 'A system error occurred. Please try again later.';
+        }
     }
 });
 // --- End Error Handling Configuration ---
