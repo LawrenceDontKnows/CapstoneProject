@@ -1911,7 +1911,8 @@ $students = $students_stmt->fetchAll();
                                                         <td><small class="text-muted"><?php echo htmlspecialchars($gf['uploader_name'] ?? ''); ?></small></td>
                                                         <td><small class="text-muted"><?php echo htmlspecialchars($gf['uploaded_at'] ?? ''); ?></small></td>
                                                         <td class="text-end pe-4">
-                                                            <button type="button" class="btn btn-sm btn-outline-success js-view-grade" data-stored="<?php echo htmlspecialchars($gf['stored'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" data-name="<?php echo htmlspecialchars($gf['original_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" title="View grade sheet"><i class="fas fa-eye me-1"></i>View</button>
+                                                            <button type="button" class="btn btn-sm btn-outline-success js-view-grade" data-stored="<?php echo htmlspecialchars($gf['stored'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" data-name="<?php echo htmlspecialchars($gf['original_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" title="View grade sheet (read-only)"><i class="fas fa-eye me-1"></i>View</button>
+                                                            <button type="button" class="btn btn-sm btn-outline-warning js-edit-grade" data-stored="<?php echo htmlspecialchars($gf['stored'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" data-name="<?php echo htmlspecialchars($gf['original_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" title="Edit grade sheet and save"><i class="fas fa-edit me-1"></i>Edit</button>
                                                             <?php
                                                             $fileUrl = $scheme . '://' . $host . $encodedBase . '/uploads/grade_imports/' . rawurlencode($gf['stored'] ?? '');
                                                             // The Excel desktop "Open" uses a file:/// path, which only resolves on
@@ -3345,8 +3346,10 @@ $students = $students_stmt->fetchAll();
                         var v = cell ? formatViewerCell(cell.v) : '';
                         if (isHeader) {
                             tableHtml += '<th class="table-light" style="white-space:nowrap;">' + escapeHtml(v) + '</th>';
-                        } else {
+                        } else if (state.editable) {
                             tableHtml += '<td class="gx-cell" contenteditable="true" data-addr="' + addr + '" style="white-space:nowrap;min-width:80px;">' + escapeHtml(v) + '</td>';
+                        } else {
+                            tableHtml += '<td style="white-space:nowrap;">' + escapeHtml(v) + '</td>';
                         }
                     }
                     tableHtml += '</tr>';
@@ -3412,10 +3415,15 @@ $students = $students_stmt->fetchAll();
                 return bestScore > 0 ? best : null;
             }
 
-            async function openViewer(stored, name) {
+            async function openViewer(stored, name, editable) {
                 state.workbook = null;
                 state.stored = stored;
-                titleEl.textContent = name || 'Grade Sheet';
+                state.editable = !!editable;
+                titleEl.textContent = (editable ? 'Edit: ' : 'View: ') + (name || 'Grade Sheet');
+                var saveBtnEl = document.getElementById('gradeFileViewerSave');
+                var hintEl = document.getElementById('gradeFileViewerHint');
+                if (saveBtnEl) saveBtnEl.style.display = editable ? '' : 'none';
+                if (hintEl) hintEl.textContent = editable ? 'Click any cell to edit, then Save (auto-computes).' : 'Read-only view. Use Edit to make changes.';
                 sheetSel.innerHTML = '';
                 bodyEl.innerHTML = '<div class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin me-2"></i>Loading...</div>';
                 var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
@@ -3573,10 +3581,16 @@ $students = $students_stmt->fetchAll();
             }
 
             document.addEventListener('click', function (e) {
+                var editBtn = e.target.closest('.js-edit-grade');
+                if (editBtn) {
+                    e.preventDefault();
+                    openViewer(editBtn.getAttribute('data-stored'), editBtn.getAttribute('data-name'), true);
+                    return;
+                }
                 var btn = e.target.closest('.js-view-grade');
                 if (!btn) return;
                 e.preventDefault();
-                openViewer(btn.getAttribute('data-stored'), btn.getAttribute('data-name'));
+                openViewer(btn.getAttribute('data-stored'), btn.getAttribute('data-name'), false);
             });
         })();
     </script>
