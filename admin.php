@@ -2866,10 +2866,10 @@ $subjects = $subjects_with_enrollments;
             }
         };
         document.addEventListener('DOMContentLoaded', function() {
-            var smtpEye = document.getElementById('smtp_eye');
-            if (smtpEye) {
-                smtpEye.style.cursor = 'pointer';
-                smtpEye.addEventListener('click', function() {
+            var smtpWrap = document.getElementById('smtp_eye_wrap');
+            if (smtpWrap) {
+                smtpWrap.style.cursor = 'pointer';
+                smtpWrap.addEventListener('click', function() {
                     window.toggleVisibility('smtp_password', 'smtp_eye');
                 });
             }
