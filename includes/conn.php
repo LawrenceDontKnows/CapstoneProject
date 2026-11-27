@@ -17,7 +17,7 @@ $db_config = [
         'password' => '',
         'port' => 3306,
     ],
-    'remote' => [
+    'production' => [
         'host' => getenv('DB_HOST') ?: 'sql306.infinityfree.com',
         'dbname' => getenv('DB_NAME') ?: 'if0_42425008_student_grade_management',
         'username' => getenv('DB_USER') ?: 'if0_42425008',
