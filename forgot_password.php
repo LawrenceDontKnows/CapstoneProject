@@ -182,7 +182,7 @@ if (!empty($_SESSION['otp_verified']) && $_SESSION['otp_verified_user_id'] == $u
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" type="image/png" href="image/GradeView Online.png">
+    <link rel="icon" type="image/png" href="image/favicon.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Forgot Password | GradeView Portal</title>

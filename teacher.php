@@ -1002,7 +1002,7 @@ $students = $students_stmt->fetchAll();
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" type="image/png" href="image/GradeView Online.png">
+    <link rel="icon" type="image/png" href="image/favicon.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teacher Dashboard - Student Grade Management</title>
@@ -1219,7 +1219,7 @@ $students = $students_stmt->fetchAll();
         <div class="sidebar" id="sidebar">
             <div class="d-flex flex-column p-3">
                 <div class="text-center mb-4">
-                    <img src="<?php echo getSystemSetting($pdo, 'system_logo', 'image/aclc.jpg'); ?>" alt="School Logo" style="width: 80px; height: 80px; margin-bottom: 10px; border-radius: 50%; object-fit: cover;">
+                    <img src="<?php echo getSystemLogoUrl($pdo); ?>" alt="School Logo" style="width: 80px; height: 80px; margin-bottom: 10px; border-radius: 50%; object-fit: cover;">
                     <h5 class="mb-0 text-white"><?php echo $_SESSION['first_name'] . ' ' . $_SESSION['last_name']; ?></h5>
                     <small class="text-white-50">Teacher Portal</small>
                 </div>

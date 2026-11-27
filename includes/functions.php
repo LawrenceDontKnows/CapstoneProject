@@ -132,6 +132,14 @@ function getSystemSetting($pdo, $key, $default = '') {
         return $stmt->fetchColumn() ?: $default;
     } catch (Exception $e) { return $default; }
 }
+function getSystemLogoUrl($pdo) {
+    $logo = getSystemSetting($pdo, 'system_logo', 'image/aclc.jpg');
+    $path = __DIR__ . '/../' . $logo;
+    if ($logo !== '' && file_exists($path)) {
+        return $logo;
+    }
+    return 'image/aclc.jpg';
+}
 function outputThemeColors($pdo) {
     $colors = [
         'theme_sidebar_bg' => '#0f172a',

@@ -45,7 +45,7 @@ if (empty($all_grades)) die("No records found to print.");
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" type="image/png" href="image/GradeView Online.png">
+    <link rel="icon" type="image/png" href="image/favicon.png">
     <meta charset="UTF-8">
     <title>Academic Report - GradeView</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -74,7 +74,7 @@ if (empty($all_grades)) die("No records found to print.");
         <div class="container">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
                 <div class="d-flex align-items-center">
-                    <img src="<?php echo getSystemSetting($pdo, 'system_logo', 'image/aclc.jpg'); ?>" alt="Logo" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; margin-right: 15px;">
+                    <img src="<?php echo getSystemLogoUrl($pdo); ?>" alt="Logo" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; margin-right: 15px;">
                     <h4 class="mb-0 fw-bold text-secondary">Academic Report</h4>
                 </div>
                 <div class="d-flex gap-2">
@@ -87,7 +87,7 @@ if (empty($all_grades)) die("No records found to print.");
 
     <div class="container border p-5 report-container mb-5">
         <div class="slip-header text-center">
-            <img src="<?php echo getSystemSetting($pdo, 'system_logo', 'image/aclc.jpg'); ?>" alt="Logo" style="width: 100px; height: 100px; margin-bottom: 15px; border-radius: 50%; object-fit: cover;">
+            <img src="<?php echo getSystemLogoUrl($pdo); ?>" alt="Logo" style="width: 100px; height: 100px; margin-bottom: 15px; border-radius: 50%; object-fit: cover;">
             <h3>GRADEVIEW ACADEMIC PORTAL</h3>
             <p class="mb-0 text-muted small fw-bold">Official Grade Report Summary</p>
             <hr>

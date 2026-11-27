@@ -362,7 +362,7 @@ foreach ($grades as $g) {
 <html lang="en">
 
 <head>
-    <link rel="icon" type="image/png" href="image/GradeView Online.png">
+    <link rel="icon" type="image/png" href="image/favicon.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Portal - Student Grade Management</title>
@@ -397,7 +397,7 @@ foreach ($grades as $g) {
             <!-- Sidebar -->
             <div class="d-flex flex-column p-3">
                 <div class="text-center mb-4">
-                    <img src="<?php echo getSystemSetting($pdo, 'system_logo', 'image/aclc.jpg'); ?>" alt="Logo" class="sidebar-logo mb-2">
+                    <img src="<?php echo getSystemLogoUrl($pdo); ?>" alt="Logo" class="sidebar-logo mb-2">
                     <h5>Student Portal</h5>
                     <div class="fw-bold"><?php echo htmlspecialchars(($_SESSION['first_name'] ?? '') . ' ' . ($_SESSION['last_name'] ?? '')); ?></div>
                     <small class="text-info"><?php echo htmlspecialchars(($student_info['course'] ?? 'N/A') . ' - ' . ($student_info['year_level'] ?? 'N/A')); ?></small>

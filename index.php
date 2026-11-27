@@ -81,7 +81,7 @@ $slideshowBgColor = '#f1f5f9';
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" type="image/png" href="image/GradeView Online.png">
+    <link rel="icon" type="image/png" href="image/favicon.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login | GradeView Portal</title>
@@ -273,7 +273,7 @@ $slideshowBgColor = '#f1f5f9';
     <div class="login-container">
         <div class="login-card text-center">
             <div class="logo">
-                <img src="<?php echo getSystemSetting($pdo, 'system_logo', 'image/aclc.jpg'); ?>" alt="Logo" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover;">
+                <img src="<?php echo getSystemLogoUrl($pdo); ?>" alt="Logo" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover;">
                 <h3>GradeView</h3>
             </div>
 

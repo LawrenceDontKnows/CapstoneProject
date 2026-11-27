@@ -14,7 +14,7 @@ unset($_SESSION['registration_success']);
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" type="image/png" href="image/GradeView Online.png">
+    <link rel="icon" type="image/png" href="image/favicon.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registration Successful | GradeView Portal</title>
@@ -47,7 +47,7 @@ unset($_SESSION['registration_success']);
             <a href="index.php" class="btn-back mb-3"><i class="fas fa-arrow-left"></i> Back to Login</a>
             
             <div class="logo">
-                <img src="<?php echo getSystemSetting($pdo, 'system_logo', 'image/aclc.jpg'); ?>" alt="Logo">
+                <img src="<?php echo getSystemLogoUrl($pdo); ?>" alt="Logo">
                 <h3>Registration Submitted</h3>
                 <p class="text-muted">GradeView Portal</p>
             </div>

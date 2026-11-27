@@ -1188,7 +1188,7 @@ $subjects = $subjects_with_enrollments;
 <html lang="en">
 
 <head>
-    <link rel="icon" type="image/png" href="image/GradeView Online.png">
+    <link rel="icon" type="image/png" href="image/favicon.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - Student Grade Management</title>
@@ -1219,7 +1219,7 @@ $subjects = $subjects_with_enrollments;
             <div class="sidebar" id="sidebar">
                 <div class="d-flex flex-column p-3">
                     <div class="text-center mb-4">
-                        <img src="<?php echo getSystemSetting($pdo, 'system_logo', 'image/aclc.jpg'); ?>" alt="Logo" class="sidebar-logo mb-2">
+                        <img src="<?php echo getSystemLogoUrl($pdo); ?>" alt="Logo" class="sidebar-logo mb-2">
                         <h5>Grade Management</h5> 
                         <small>Administrator Panel</small>
                     </div>
@@ -1907,7 +1907,7 @@ $subjects = $subjects_with_enrollments;
                                         <form method="POST" enctype="multipart/form-data" class="row align-items-end g-3">
                                             <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
                                             <div class="col-md-3 text-center">
-                                                <img src="<?php echo getSystemSetting($pdo, 'system_logo', 'image/aclc.jpg'); ?>" class="rounded border p-1" style="width: 100px; height: 100px; object-fit: cover;">
+                                                <img src="<?php echo getSystemLogoUrl($pdo); ?>" class="rounded border p-1" style="width: 100px; height: 100px; object-fit: cover;">
                                                 <div class="small text-muted mt-2">Current Logo</div>
                                             </div>
                                             <div class="col-md-6">
@@ -2114,7 +2114,7 @@ $subjects = $subjects_with_enrollments;
                                                 <label class="form-label small fw-bold">SMTP Password / App Password</label>
                                                 <div class="input-group">
                                                     <input type="password" name="smtp_password" id="smtp_password" class="form-control" value="<?php echo htmlspecialchars(getSystemSetting($pdo, 'smtp_password', '')); ?>">
-                                                    <span class="input-group-text" onclick="toggleVisibility('smtp_password', 'smtp_eye')">
+                                                    <span class="input-group-text" id="smtp_eye_wrap">
                                                         <i class="fas fa-eye" id="smtp_eye"></i>
                                                     </span>
                                                 </div>
