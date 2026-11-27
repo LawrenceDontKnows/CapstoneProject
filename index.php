@@ -154,11 +154,11 @@ $slideshowBgColor = '#f1f5f9';
             width: 100%;
             max-width: 420px;
             border: none;
-            color: <?php echo $formGlass ? '#1e293b' : 'inherit'; ?>;
+            color: <?php echo $formGlass ? '#ffffff' : 'inherit'; ?>;
         }
         .login-card .form-label {
             font-weight: 600;
-            color: <?php echo $formGlass ? '#1e293b' : '#475569'; ?>;
+            color: <?php echo $formGlass ? '#ffffff' : '#475569'; ?>;
         }
         .btn-custom {
             background: #1e3a8a;
@@ -189,16 +189,16 @@ $slideshowBgColor = '#f1f5f9';
         .input-group-text {
             background-color: <?php echo $formGlass ? 'rgba(255, 255, 255, 0.2)' : 'transparent'; ?>;
             border: none;
-            color: <?php echo $formGlass ? '#1e293b' : '#94a3b8'; ?>;
+            color: <?php echo $formGlass ? '#ffffff' : '#94a3b8'; ?>;
         }
         .form-control {
             border: none;
             box-shadow: none !important;
             background: <?php echo $formGlass ? 'transparent' : 'white'; ?>;
-            color: <?php echo $formGlass ? '#1e293b' : 'inherit'; ?>;
+            color: <?php echo $formGlass ? '#ffffff' : 'inherit'; ?>;
         }
         .form-control::placeholder {
-            color: <?php echo $formGlass ? 'rgba(30, 41, 59, 0.6)' : '#94a3b8'; ?>;
+            color: <?php echo $formGlass ? 'rgba(255, 255, 255, 0.7)' : '#94a3b8'; ?>;
         }
         #togglePassword {
             cursor: pointer;
@@ -207,14 +207,17 @@ $slideshowBgColor = '#f1f5f9';
         }
         .toast-container { z-index: 1060; }
         .footer-link a {
-            color: <?php echo $formGlass ? '#1e3a8a' : '#1e3a8a'; ?>;
+            color: <?php echo $formGlass ? '#ffffff' : '#1e3a8a'; ?>;
             font-weight: 600;
             text-decoration: none;
             transition: color 0.2s;
         }
         .footer-link a:hover {
-            color: <?php echo $formGlass ? '#dc2626' : '#dc2626'; ?>;
+            color: <?php echo $formGlass ? '#ffffff' : '#dc2626'; ?>;
             text-decoration: underline;
+        }
+        .footer-link .text-muted {
+            color: <?php echo $formGlass ? 'rgba(255, 255, 255, 0.8)' : ''; ?> !important;
         }
         .logo {
             text-align: center;
@@ -228,7 +231,7 @@ $slideshowBgColor = '#f1f5f9';
             margin-bottom: 1rem;
         }
         .logo h3 {
-            color: <?php echo $formGlass ? '#1e293b' : '#1e293b'; ?>;
+            color: <?php echo $formGlass ? '#ffffff' : '#1e293b'; ?>;
             font-weight: 800;
             letter-spacing: -1px;
         }
@@ -307,7 +310,7 @@ $slideshowBgColor = '#f1f5f9';
                 </button>
 
                 <div class="d-flex justify-content-between small">
-                    <a href="forgot_password.php" class="text-decoration-none">Forgot password?</a>
+                    <a href="forgot_password.php" class="text-decoration-none" style="color: <?php echo $formGlass ? '#ffffff' : 'inherit'; ?>;">Forgot password?</a>
                 </div>
             </form>
 
