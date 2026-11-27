@@ -10,12 +10,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Configure Apache MPM
 # Force Apache to use only prefork MPM
+# Configure Apache to use exactly one MPM: prefork
+# Configure Apache to use only prefork MPM
 RUN set -eux; \
-    rm -f /etc/apache2/mods-enabled/mpm_*.load; \
-    rm -f /etc/apache2/mods-enabled/mpm_*.conf; \
+    find /etc/apache2 -type l -name 'mpm_*.load' -delete; \
+    find /etc/apache2 -type l -name 'mpm_*.conf' -delete; \
     a2enmod mpm_prefork; \
     a2enmod rewrite; \
-    apache2ctl -M 2>&1 | grep mpm_prefork_module
+    apache2ctl -M 2>&1 | tee /tmp/apache-modules.txt; \
+    test "$(grep -Ec 'mpm_[a-z]+_module' /tmp/apache-modules.txt)" -eq 1; \
+    grep -q 'mpm_prefork_module' /tmp/apache-modules.txt
 
 # Production PHP settings
 RUN { \
