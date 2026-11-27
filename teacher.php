@@ -1918,7 +1918,9 @@ $students = $students_stmt->fetchAll();
                                                             $msExcelUrl = $localFileUrl ? 'ms-excel:ofe|u|' . $localFileUrl : '';
                                                             ?>
                                                             <?php if ($msExcelUrl): ?>
-                                                            <a href="<?php echo htmlspecialchars($msExcelUrl, ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-sm btn-outline-info" title="Open in Excel (editable — edit, save, then click Compute)"><i class="fas fa-external-link-alt me-1"></i>Open</a>
+                                                            <a href="<?php echo htmlspecialchars($msExcelUrl, ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-sm btn-outline-info" title="Open in Excel desktop app (editable — edit, save, then Compute)"><i class="fas fa-external-link-alt me-1"></i>Open</a>
+                                                            <?php else: ?>
+                                                            <button type="button" class="btn btn-sm btn-outline-info js-view-grade" data-stored="<?php echo htmlspecialchars($gf['stored'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" data-name="<?php echo htmlspecialchars($gf['original_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" title="Open the grade sheet (edit &amp; save in your browser)"><i class="fas fa-external-link-alt me-1"></i>Open</button>
                                                             <?php endif; ?>
                                                             <a href="<?php echo htmlspecialchars($fileUrl, ENT_QUOTES, 'UTF-8'); ?>" download="<?php echo htmlspecialchars($gf['original_name'] ?? 'grades.xlsx', ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-sm btn-outline-primary" title="Download a writable copy, edit it in Excel, save, then import the updated file"><i class="fas fa-download me-1"></i>Download</a>
                                                             <?php if ((int)($gf['subject_id'] ?? 0) > 0): ?>
