@@ -12,14 +12,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Force Apache to use only prefork MPM
 # Configure Apache to use exactly one MPM: prefork
 # Configure Apache to use only prefork MPM
-RUN set -eux; \
-    find /etc/apache2 -type l -name 'mpm_*.load' -delete; \
-    find /etc/apache2 -type l -name 'mpm_*.conf' -delete; \
+# Configure and verify exactly one Apache MPM
+RUN set -eu; \
+    rm -f /etc/apache2/mods-enabled/mpm_*.load; \
+    rm -f /etc/apache2/mods-enabled/mpm_*.conf; \
     a2enmod mpm_prefork; \
     a2enmod rewrite; \
-    apache2ctl -M 2>&1 | tee /tmp/apache-modules.txt; \
-    test "$(grep -Ec 'mpm_[a-z]+_module' /tmp/apache-modules.txt)" -eq 1; \
-    grep -q 'mpm_prefork_module' /tmp/apache-modules.txt
+    APACHE_MODULES="$(apache2ctl -M 2>&1)" || { \
+        printf '%s\n' "$APACHE_MODULES"; \
+        exit 1; \
+    }; \
+    printf '%s\n' "$APACHE_MODULES"; \
+    MPM_COUNT="$(printf '%s\n' "$APACHE_MODULES" | grep -Ec 'mpm_(event|worker|prefork)_module' || true)"; \
+    test "$MPM_COUNT" -eq 1 || { \
+        echo "ERROR: Expected exactly one Apache MPM, found $MPM_COUNT"; \
+        exit 1; \
+    }; \
+    printf '%s\n' "$APACHE_MODULES" | grep -q 'mpm_prefork_module'
 
 # Production PHP settings
 RUN { \
