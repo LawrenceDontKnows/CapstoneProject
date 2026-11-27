@@ -58,7 +58,7 @@ if (APP_ENV === 'development') {
     ini_set('display_errors', 0);
     ini_set('display_startup_errors', 0);
     ini_set('log_errors', 1);
-    ini_set('error_log', __DIR__ . '/../error.log');
+    ini_set('error_log', '/tmp/php_errors.log');
     error_reporting(E_ALL & ~E_DEPRECATED & ~E_STRICT);
 }
 
@@ -96,7 +96,7 @@ set_error_handler(function($severity, $message, $file, $line) {
         $file,
         $line
     );
-    error_log($log, 3, __DIR__ . '/../error.log');
+    error_log($log, 3, '/tmp/php_errors.log');
     if (defined('APP_ENV') && APP_ENV === 'production') {
         return true; // Don't execute PHP internal handler
     }
@@ -115,7 +115,7 @@ register_shutdown_function(function() {
             $error['file'],
             $error['line']
         );
-        error_log($log, 3, __DIR__ . '/../error.log');
+        error_log($log, 3, '/tmp/php_errors.log');
     }
 });
 // --- End Error Handling Configuration ---
@@ -133,15 +133,10 @@ if (php_sapi_name() !== 'cli') {
         session_name('GVSESSID');
     }
 
-    // Auto-detect domain for cookies
+    // Use a host-only cookie (empty domain) so it works on any host,
+    // including multi-part domains like *.up.railway.app where a
+    // last-two-labels domain would be a rejected public suffix.
     $cookie_domain = '';
-    if (APP_ENV === 'production') {
-        // Extract domain from host (remove www if present)
-        $host_parts = explode('.', $_SERVER['HTTP_HOST'] ?? '');
-        if (count($host_parts) >= 2) {
-            $cookie_domain = '.' . implode('.', array_slice($host_parts, -2));
-        }
-    }
 
     session_set_cookie_params([
         'lifetime' => 0,
@@ -165,6 +160,7 @@ if (APP_ENV === 'production' && php_sapi_name() !== 'cli') {
     $csp .= "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; ";
     $csp .= "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; ";
     $csp .= "img-src 'self' data: https:; ";  // Allow HTTPS images
+    $csp .= "connect-src 'self' https://generativelanguage.googleapis.com; ";  // AI assistant
     $csp .= "frame-ancestors 'none'; ";
     header("Content-Security-Policy: " . $csp);
     header("X-Content-Type-Options: nosniff");

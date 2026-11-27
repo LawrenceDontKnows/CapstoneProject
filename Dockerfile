@@ -26,12 +26,15 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 COPY . /var/www/html/
 
 # Install PHP dependencies, including PHPMailer
-RUN composer install \
-    --no-dev \
-    --prefer-dist \
-    --no-interaction \
-    --optimize-autoloader \
-    --working-dir=/var/www/html
+# composer.json lives in composer/; copy it to root so vendor/ lands at /var/www/html/vendor
+RUN cp /var/www/html/composer/composer.json /var/www/html/composer.json \
+    && cp /var/www/html/composer/composer.lock /var/www/html/composer.lock \
+    && composer install \
+        --no-dev \
+        --prefer-dist \
+        --no-interaction \
+        --optimize-autoloader \
+        --working-dir=/var/www/html
 
 # Ensure uploads directories exist and are writable
 RUN mkdir -p /var/www/html/uploads/avatars \
