@@ -1752,8 +1752,8 @@ $students = $students_stmt->fetchAll();
                         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                             <div>
                                 <h4 class="fw-bold mb-1"><i class="fas fa-edit me-2 text-primary"></i>Manage Grade</h4>
-                                <p class="text-muted small mb-0">Import an Excel grade file. Click <strong>Open</strong> to edit it directly in Excel (editable — edit, save, then click <strong>Compute</strong> to refresh), or <strong>Download</strong> a copy to edit and re-import. Grades are computed automatically when a subject is selected so students can see their final average and Passed/Failed status.</p>
-                                <p class="text-muted small mb-0 mt-1"><i class="fas fa-circle-info me-1"></i>If Excel shows a security warning when opening, click <strong>Yes</strong>. To stop the warning permanently, add this folder to Excel's Trusted Locations: <code>C:\xampp\htdocs\gradeview system\uploads\grade_imports</code> (File → Options → Trust Center → Trusted Locations).</p>
+                                <p class="text-muted small mb-0">Import an Excel grade file. On a local server (XAMPP) click <strong>Open</strong> to edit directly in Excel, then <strong>Compute</strong> to refresh. On a hosted/cloud server, use <strong>Download</strong>, edit &amp; save the copy, then <strong>Import</strong> it again (or <strong>Compute</strong>). Grades compute automatically when a subject is selected so students see their final average and Passed/Failed status.</p>
+                                <p class="text-muted small mb-0 mt-1"><i class="fas fa-circle-info me-1"></i>Files opened from a web/cloud URL are read-only in Excel — that is expected. To edit, always <strong>Download</strong> the file, save it, then re-import. On localhost, add <code>C:\xampp\htdocs\gradeview system\uploads\grade_imports</code> to Excel's Trusted Locations (File → Options → Trust Center) to avoid security warnings.</p>
                             </div>
                         </div>
 
@@ -1849,8 +1849,10 @@ $students = $students_stmt->fetchAll();
                                                                 }, $p);
                                                                 $localFileUrl = 'file:///' . ltrim($p, '/');
                                                             }
-                                                            $openTarget = $localFileUrl ?: $fileUrl;
-                                                            $msExcelUrl = 'ms-excel:ofe|u|' . $openTarget;
+                                                            // Open-in-Excel (editable) only works from a local file:/// path, i.e.
+                                                            // localhost XAMPP. On cloud hosts the web URL opens read-only, so we
+                                                            // hide Open there and rely on Download -> edit -> Import instead.
+                                                            $msExcelUrl = $localFileUrl ? 'ms-excel:ofe|u|' . $localFileUrl : '';
                                                             ?>
                                                             <?php if ($msExcelUrl): ?>
                                                             <a href="<?php echo htmlspecialchars($msExcelUrl, ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-sm btn-outline-info" title="Open in Excel (editable — edit, save, then click Compute)"><i class="fas fa-external-link-alt me-1"></i>Open</a>
