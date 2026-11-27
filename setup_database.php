@@ -12,6 +12,7 @@ require_once 'includes/conn.php';
 echo "<!DOCTYPE html>
 <html>
 <head>
+    <link rel="icon" type="image/png" href="image/GradeView Online.png">
     <title>GradeView Database Setup</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }

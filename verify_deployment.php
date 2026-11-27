@@ -8,7 +8,8 @@
 require_once 'includes/conn.php';
 
 echo "<!DOCTYPE html>
-<html><head><title>Deployment Verification</title>
+<html><head>
+    <link rel="icon" type="image/png" href="image/GradeView Online.png"><title>Deployment Verification</title>
 <style>body{font-family:Arial;margin:20px;}.ok{color:green;}.fail{color:red;}.warn{color:orange;}pre{background:#f5f5f5;padding:10px;}</style></head><body>";
 echo "<h1>GradeView Deployment Verification</h1>";
 

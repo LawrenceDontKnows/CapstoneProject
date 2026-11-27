@@ -1188,6 +1188,7 @@ $subjects = $subjects_with_enrollments;
 <html lang="en">
 
 <head>
+    <link rel="icon" type="image/png" href="image/GradeView Online.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - Student Grade Management</title>
