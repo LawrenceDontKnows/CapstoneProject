@@ -947,7 +947,7 @@ if ($filter_subject) {
     $params[] = $teacher_id;
 }
 
-$student_sql = "SELECT $select_fields FROM users s $join_clause WHERE s.role = 'student' AND s.status = 'active' ";
+$student_sql .= " ORDER BY s.year_level DESC, s.course ASC, s.last_name ASC";
 
 if ($search) {
     // GLOBAL SEARCH: Allow finding any student in the system to add them to a subject
