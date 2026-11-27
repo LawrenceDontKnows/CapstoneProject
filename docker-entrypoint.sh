@@ -1,28 +1,52 @@
+
 #!/bin/sh
 set -e
 
+# Railway application port
 PORT="${PORT:-8080}"
 
-echo "========== APACHE MPM DIAGNOSTICS =========="
+echo "========== FIXING APACHE MPM =========="
 
-echo "Enabled MPM files:"
-ls -la /etc/apache2/mods-enabled/mpm_* 2>&1 || true
+# Remove ALL enabled MPM modules
+rm -f /etc/apache2/mods-enabled/mpm_*.load
+rm -f /etc/apache2/mods-enabled/mpm_*.conf
 
-echo "All MPM LoadModule directives:"
-grep -RniE '^[[:space:]]*LoadModule[[:space:]]+mpm_' /etc/apache2 2>/dev/null || true
+# Enable only prefork
+a2enmod mpm_prefork
+a2enmod rewrite
 
-echo "Apache module configuration:"
-apache2ctl -M 2>&1 || true
+# Verify Apache has exactly one MPM
+APACHE_MODULES="$(apache2ctl -M 2>&1)" || {
+    echo "ERROR: Apache configuration validation failed:"
+    echo "$APACHE_MODULES"
+    exit 1
+}
 
-echo "========== END DIAGNOSTICS =========="
+echo "$APACHE_MODULES"
 
-# Configure Apache port
+MPM_COUNT="$(printf '%s\n' "$APACHE_MODULES" | grep -Ec 'mpm_(event|worker|prefork)_module' || true)"
+
+if [ "$MPM_COUNT" -ne 1 ]; then
+    echo "ERROR: Expected exactly one MPM. Found: $MPM_COUNT"
+    exit 1
+fi
+
+echo "Apache MPM successfully configured."
+
+echo "========== CONFIGURING RAILWAY PORT =========="
+
+# Configure Apache to listen on Railway's port
 sed -i "s/Listen 80/Listen ${PORT}/" /etc/apache2/ports.conf
 sed -i "s/:80>/:${PORT}>/" /etc/apache2/sites-available/000-default.conf
 
-# Prepare grade import directory
+# Ensure grade import directory exists
 mkdir -p /var/www/html/uploads/grade_imports
+
+# Set permissions for Railway persistent volume
 chown -R www-data:www-data /var/www/html/uploads/grade_imports
 chmod -R 775 /var/www/html/uploads/grade_imports
 
+echo "Starting Apache on port ${PORT}"
+
+# Start Apache
 exec "$@"
