@@ -1911,8 +1911,7 @@ $students = $students_stmt->fetchAll();
                                                         <td><small class="text-muted"><?php echo htmlspecialchars($gf['uploader_name'] ?? ''); ?></small></td>
                                                         <td><small class="text-muted"><?php echo htmlspecialchars($gf['uploaded_at'] ?? ''); ?></small></td>
                                                         <td class="text-end pe-4">
-                                                            <button type="button" class="btn btn-sm btn-outline-success js-view-grade" data-stored="<?php echo htmlspecialchars($gf['stored'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" data-name="<?php echo htmlspecialchars($gf['original_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" title="View grade sheet (read-only)"><i class="fas fa-eye me-1"></i>View</button>
-                                                            <button type="button" class="btn btn-sm btn-outline-warning js-edit-grade" data-stored="<?php echo htmlspecialchars($gf['stored'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" data-name="<?php echo htmlspecialchars($gf['original_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" title="Edit grade sheet and save"><i class="fas fa-edit me-1"></i>Edit</button>
+                                                            <button type="button" class="btn btn-sm btn-outline-success js-view-grade" data-stored="<?php echo htmlspecialchars($gf['stored'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" data-name="<?php echo htmlspecialchars($gf['original_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" title="View / edit grade sheet and save"><i class="fas fa-eye me-1"></i>View</button>
                                                             <?php
                                                             $fileUrl = $scheme . '://' . $host . $encodedBase . '/uploads/grade_imports/' . rawurlencode($gf['stored'] ?? '');
                                                             // The Excel desktop "Open" uses a file:/// path, which only resolves on
@@ -3581,16 +3580,10 @@ $students = $students_stmt->fetchAll();
             }
 
             document.addEventListener('click', function (e) {
-                var editBtn = e.target.closest('.js-edit-grade');
-                if (editBtn) {
-                    e.preventDefault();
-                    openViewer(editBtn.getAttribute('data-stored'), editBtn.getAttribute('data-name'), true);
-                    return;
-                }
                 var btn = e.target.closest('.js-view-grade');
                 if (!btn) return;
                 e.preventDefault();
-                openViewer(btn.getAttribute('data-stored'), btn.getAttribute('data-name'), false);
+                openViewer(btn.getAttribute('data-stored'), btn.getAttribute('data-name'), true);
             });
         })();
     </script>
