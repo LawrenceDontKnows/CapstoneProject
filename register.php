@@ -540,6 +540,140 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             return isValid;
         };
 
+return isValid;
+};
+
+// ==========================================
+// 1. AUTOMATIC AGE CALCULATION
+// ==========================================
+const birthDateInput = document.getElementById('val_bdate');
+const ageInput = document.getElementById('val_age');
+
+birthDateInput.addEventListener('change', function () {
+    if (!this.value) {
+        ageInput.value = '';
+        validateField(ageInput);
+        return;
+    }
+
+    const birthDate = new Date(this.value + 'T00:00:00');
+    const today = new Date();
+
+    let age = today.getFullYear() - birthDate.getFullYear();
+
+    const monthDifference = today.getMonth() - birthDate.getMonth();
+
+    if (
+        monthDifference < 0 ||
+        (monthDifference === 0 && today.getDate() < birthDate.getDate())
+    ) {
+        age--;
+    }
+
+    ageInput.value = age >= 0 ? age : '';
+
+    validateField(ageInput);
+});
+
+// ==========================================
+// 2. PASSWORD STRENGTH METER
+// ==========================================
+const passwordInput = document.getElementById('password');
+const strengthBar = document.getElementById('pw-strength-bar');
+const strengthText = document.getElementById('pw-strength-text');
+
+passwordInput.addEventListener('input', function () {
+    const password = this.value;
+    let score = 0;
+
+    if (password.length >= 8) score++;
+    if (/[A-Z]/.test(password)) score++;
+    if (/[a-z]/.test(password)) score++;
+    if (/[0-9]/.test(password)) score++;
+    if (/[^A-Za-z0-9]/.test(password)) score++;
+
+    const levels = [
+        { width: '0%', text: '', color: '' },
+        { width: '20%', text: 'Very Weak', color: 'bg-danger' },
+        { width: '40%', text: 'Weak', color: 'bg-danger' },
+        { width: '60%', text: 'Fair', color: 'bg-warning' },
+        { width: '80%', text: 'Good', color: 'bg-info' },
+        { width: '100%', text: 'Strong', color: 'bg-success' }
+    ];
+
+    const level = levels[score];
+
+    strengthBar.style.width = level.width;
+    strengthBar.className = 'progress-bar ' + level.color;
+    strengthText.textContent = level.text;
+
+    validateField(passwordInput);
+
+    const confirmPassword = document.getElementById('confirm_password');
+
+    if (confirmPassword.value !== '') {
+        validateField(confirmPassword);
+    }
+});
+
+// ==========================================
+// 3. LIVE FIELD VALIDATION
+// ==========================================
+document.querySelectorAll(
+    '#registrationForm input, #registrationForm select, #registrationForm textarea'
+).forEach(function (field) {
+
+    field.addEventListener('input', function () {
+        if (this.id !== 'val_age') {
+            validateField(this);
+        }
+    });
+
+    field.addEventListener('change', function () {
+        validateField(this);
+    });
+});
+
+// ==========================================
+// 4. REGISTRATION FORM VALIDATION
+// ==========================================
+form.addEventListener('submit', function (event) {
+
+    let isFormValid = true;
+
+    const fields = form.querySelectorAll(
+        'input[required], select[required], textarea[required]'
+    );
+
+    fields.forEach(function (field) {
+        if (!validateField(field)) {
+            isFormValid = false;
+        }
+    });
+
+    const email = document.getElementById('val_email').value.trim();
+    const confirmEmail = document.getElementById('val_cemail').value.trim();
+
+    const password = passwordInput.value;
+    const confirmPassword = document.getElementById('confirm_password').value;
+
+    if (email !== confirmEmail) {
+        isFormValid = false;
+        validateField(document.getElementById('val_cemail'));
+    }
+
+    if (password !== confirmPassword) {
+        isFormValid = false;
+        validateField(document.getElementById('confirm_password'));
+    }
+
+    if (!isFormValid) {
+        event.preventDefault();
+        window.showPopup('Please check the highlighted fields and correct the errors.');
+    }
+});
+</script>
+
         </script>
 </body>
 </html>
