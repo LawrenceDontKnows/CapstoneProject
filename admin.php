@@ -1884,7 +1884,7 @@ $subjects = $subjects_with_enrollments;
                                                     </div>
                                                 </div>
                                                 <div class="col-md-4 text-center">
-                                                    <img src="<?php echo htmlspecialchars($admin_info['profile_picture'] ?? 'image/admin_logo.jpeg'); ?>" id="adminProfilePicturePreview" class="rounded-circle mb-2 cropper-preview" style="width: 120px; height: 120px; object-fit: cover; border: 3px solid #eee;" onerror="this.onerror=null;this.src='image/admin_logo.jpeg';">
+                                                    <img src="<?php echo htmlspecialchars($admin_info['profile_picture'] ?: 'image/admin_logo.jpeg'); ?>" id="adminProfilePicturePreview" class="rounded-circle mb-2 cropper-preview" style="width: 120px; height: 120px; object-fit: cover; border: 3px solid #eee;" onerror="this.onerror=null;this.src='image/admin_logo.jpeg';">
                                                     <input type="file" class="form-control form-control-sm cropper-file-input" name="profile_picture" accept="image/*">
                                                     <input type="hidden" name="cropped_image_data" class="cropper-data">
                                                     <div class="form-text">Update Picture</div>
