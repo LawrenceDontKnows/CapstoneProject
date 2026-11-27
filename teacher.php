@@ -3422,7 +3422,7 @@ $students = $students_stmt->fetchAll();
                 var saveBtnEl = document.getElementById('gradeFileViewerSave');
                 var hintEl = document.getElementById('gradeFileViewerHint');
                 if (saveBtnEl) saveBtnEl.style.display = editable ? '' : 'none';
-                if (hintEl) hintEl.textContent = editable ? 'Click any cell to edit, then Save (auto-computes).' : 'Read-only view. Use Edit to make changes.';
+                if (hintEl) hintEl.textContent = (editable ? 'Click any cell to edit, then Save (auto-computes).' : 'Read-only view.') + ' [editor build 2026-11-27c]';
                 sheetSel.innerHTML = '';
                 bodyEl.innerHTML = '<div class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin me-2"></i>Loading...</div>';
                 var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
