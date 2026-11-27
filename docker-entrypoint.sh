@@ -50,3 +50,4 @@ echo "Starting Apache on port ${PORT}"
 
 # Start Apache
 exec "$@"
+6ab731fe94a9a97d25655839ecef759c7dd69bb0c30a2f87
