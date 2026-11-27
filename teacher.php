@@ -1835,9 +1835,12 @@ $students = $students_stmt->fetchAll();
                                                             <button type="button" class="btn btn-sm btn-outline-success js-view-grade" data-stored="<?php echo htmlspecialchars($gf['stored'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" data-name="<?php echo htmlspecialchars($gf['original_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" title="View grade sheet"><i class="fas fa-eye me-1"></i>View</button>
                                                             <?php
                                                             $fileUrl = $scheme . '://' . $host . $encodedBase . '/uploads/grade_imports/' . rawurlencode($gf['stored'] ?? '');
-                                                            // Build a file:/// URL to the real on-disk file so Excel opens it as a local
-                                                            // (editable, savable) file rather than a read-only web file.
-                                                            $absPath = realpath($gradeDir . '/' . ($gf['stored'] ?? ''));
+                                                            // Prefer a local file:/// URL when the file is reachable on this machine
+                                                            // (e.g. localhost XAMPP) so Excel can edit & save in place. Otherwise
+                                                            // fall back to the public web URL so Open works from any host/directory
+                                                            // (e.g. Railway/cloud) where there is no shared local path.
+                                                            $isLocalHost = in_array(strtolower(parse_url($host, PHP_URL_HOST) ?: $host), ['localhost', '127.0.0.1', '::1'], true) || preg_match('/^127\./', (string)($host));
+                                                            $absPath = $isLocalHost ? realpath($gradeDir . '/' . ($gf['stored'] ?? '')) : false;
                                                             $localFileUrl = '';
                                                             if ($absPath) {
                                                                 $p = str_replace('\\', '/', $absPath);
@@ -1846,7 +1849,8 @@ $students = $students_stmt->fetchAll();
                                                                 }, $p);
                                                                 $localFileUrl = 'file:///' . ltrim($p, '/');
                                                             }
-                                                            $msExcelUrl = $localFileUrl ? 'ms-excel:ofe|u|' . $localFileUrl : '';
+                                                            $openTarget = $localFileUrl ?: $fileUrl;
+                                                            $msExcelUrl = 'ms-excel:ofe|u|' . $openTarget;
                                                             ?>
                                                             <?php if ($msExcelUrl): ?>
                                                             <a href="<?php echo htmlspecialchars($msExcelUrl, ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-sm btn-outline-info" title="Open in Excel (editable — edit, save, then click Compute)"><i class="fas fa-external-link-alt me-1"></i>Open</a>
