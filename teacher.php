@@ -3422,7 +3422,7 @@ $students = $students_stmt->fetchAll();
                 var saveBtnEl = document.getElementById('gradeFileViewerSave');
                 var hintEl = document.getElementById('gradeFileViewerHint');
                 if (saveBtnEl) saveBtnEl.style.display = editable ? '' : 'none';
-                if (hintEl) hintEl.textContent = (editable ? 'Click any cell to edit, then Save (auto-computes).' : 'Read-only view.') + ' [editor build 2026-11-27c]';
+                if (hintEl) hintEl.textContent = (editable ? 'Click any cell to edit, then Save (auto-computes).' : 'Read-only preview. Use Open to edit in Excel, then Compute.') + ' [editor build 2026-11-27d]';
                 sheetSel.innerHTML = '';
                 bodyEl.innerHTML = '<div class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin me-2"></i>Loading...</div>';
                 var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
@@ -3583,7 +3583,7 @@ $students = $students_stmt->fetchAll();
                 var btn = e.target.closest('.js-view-grade');
                 if (!btn) return;
                 e.preventDefault();
-                openViewer(btn.getAttribute('data-stored'), btn.getAttribute('data-name'), true);
+                openViewer(btn.getAttribute('data-stored'), btn.getAttribute('data-name'), false);
             });
         })();
     </script>
