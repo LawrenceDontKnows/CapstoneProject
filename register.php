@@ -463,7 +463,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 toastInstance.show();
             }
         };
-
+<?php if (!empty($toast_msg)): ?>
+    window.showPopup(<?php echo json_encode($toast_msg); ?>);
+<?php endif; ?>
         window.validateField = function(input) {
             let isValid = true;
             let isNeutral = false;
