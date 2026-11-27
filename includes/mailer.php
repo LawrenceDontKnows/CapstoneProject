@@ -54,7 +54,7 @@ function configureMailer(PHPMailer $mail, array $config) {
     $mail->SMTPSecure = $config['encryption'] ?: null;
     $mail->Port = $config['port'];
     $mail->CharSet = 'UTF-8';
-    $mail->Timeout = 30;
+    $mail->Timeout = 10;
 
     // Debug level: 0 = off, 1 = client, 2 = client + server, 3 = connection, 4 = low-level
     $mail->SMTPDebug = defined('APP_ENV') && APP_ENV === 'development' ? 2 : 0;

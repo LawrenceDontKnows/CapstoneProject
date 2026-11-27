@@ -540,9 +540,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             return isValid;
         };
 
-return isValid;
-};
-
 // ==========================================
 // 1. AUTOMATIC AGE CALCULATION
 // ==========================================
@@ -673,7 +670,5 @@ form.addEventListener('submit', function (event) {
     }
 });
 </script>
-
-        </script>
 </body>
 </html>
