@@ -106,9 +106,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'impor
             $manifest = is_file($manifestFile) ? (json_decode(@file_get_contents($manifestFile), true) ?: []) : [];
             if (!is_array($manifest)) { $manifest = []; }
 
-            // Re-import dedup: update an existing entry for the same file + subject + uploader
-            // instead of creating a duplicate (so editing in Excel and re-importing replaces it).
-            $stored = date('Ymd_His') . '_' . substr(md5($origName . microtime(true)), 0, 6) . '_' . $safeBase . '.' . $ext;
+            // Use the clean original filename (no random date/hash prefix) so the file
+            // opens/saves in Excel under its real name. A numeric suffix is added only
+            // when another uploader already uses the same filename.
+            $stored = $safeBase . '.' . $ext;
             $existingIndex = -1;
             foreach ($manifest as $i => $m) {
                 if (($m['original_name'] ?? '') === $origName
@@ -123,6 +124,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'impor
                     }
                     break;
                 }
+            }
+
+            // Avoid clobbering a different uploader's file that happens to share the name.
+            $suffix = 1;
+            while (true) {
+                $clash = false;
+                foreach ($manifest as $m) {
+                    if (($m['stored'] ?? '') === $stored && (int)($m['uploader_id'] ?? 0) !== (int)$_SESSION['user_id']) { $clash = true; break; }
+                }
+                if (!$clash) break;
+                $stored = $safeBase . '_' . $suffix . '.' . $ext;
+                $suffix++;
             }
 
             $dest = $dir . '/' . $stored;
