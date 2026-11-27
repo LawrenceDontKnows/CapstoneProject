@@ -80,8 +80,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         first_name, last_name, suffix, age, birth_date, sex,
                         phone_number, course, year_level, email, username, home_address, 
                         city, province, guardian_name, guardian_occupation, 
-                        guardian_status, guardian_phone, guardian_address, password, role
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'student')";
+                        guardian_status, guardian_phone, guardian_address, password, role, profile_picture
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'student', 'image/default.png')";
             
             $insert = $pdo->prepare($sql);
             $insert->execute([
