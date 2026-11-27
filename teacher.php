@@ -3259,7 +3259,7 @@ $students = $students_stmt->fetchAll();
                     <div class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin me-2"></i>Loading...</div>
                 </div>
                 <div class="modal-footer">
-                    <span id="gradeFileViewerHint" class="me-auto small text-muted">Edit any cell, then click Save.</span>
+                    <span id="gradeFileViewerHint" class="me-auto small text-muted">Click any cell to edit, then Save (auto-computes). Use Compute on the list to recompute manually.</span>
                     <button type="button" class="btn btn-success" id="gradeFileViewerSave" data-csrf="<?php echo htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8'); ?>"><i class="fas fa-save me-1"></i>Save</button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
@@ -3275,6 +3275,8 @@ $students = $students_stmt->fetchAll();
         .gx-scroll-top::-webkit-scrollbar-thumb:hover { background: #868e96; }
         .gx-scroll-top-inner { height: 1px; }
         #gradeFileViewerModal .modal-header { cursor: move; user-select: none; }
+        #gradeFileViewerModal td.gx-cell { cursor: text; }
+        #gradeFileViewerModal td.gx-cell:focus { outline: 2px solid #0d6efd; outline-offset: -2px; background: #e7f1ff; }
         #gradeFileViewerModal .modal-content { height: 100%; }
         .gx-resize-handle {
             position: absolute;
