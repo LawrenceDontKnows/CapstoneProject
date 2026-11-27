@@ -1752,8 +1752,8 @@ $students = $students_stmt->fetchAll();
                         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                             <div>
                                 <h4 class="fw-bold mb-1"><i class="fas fa-edit me-2 text-primary"></i>Manage Grade</h4>
-                                <p class="text-muted small mb-0">Import an Excel grade file. On a local server (XAMPP) click <strong>Open</strong> to edit directly in Excel, then <strong>Compute</strong> to refresh. On a hosted/cloud server, use <strong>Download</strong>, edit &amp; save the copy, then <strong>Import</strong> it again (or <strong>Compute</strong>). Grades compute automatically when a subject is selected so students see their final average and Passed/Failed status.</p>
-                                <p class="text-muted small mb-0 mt-1"><i class="fas fa-circle-info me-1"></i>Files opened from a web/cloud URL are read-only in Excel — that is expected. To edit, always <strong>Download</strong> the file, save it, then re-import. On localhost, add <code>C:\xampp\htdocs\gradeview system\uploads\grade_imports</code> to Excel's Trusted Locations (File → Options → Trust Center) to avoid security warnings.</p>
+                                <p class="text-muted small mb-0">Import an Excel grade file, then click <strong>Open</strong> to edit it in the Excel desktop app and save — no download needed. After saving, click <strong>Compute</strong> to refresh grades. You can also <strong>Download</strong> a copy anytime. Grades compute automatically when a subject is selected so students see their final average and Passed/Failed status.</p>
+                                <p class="text-muted small mb-0 mt-1"><i class="fas fa-circle-info me-1"></i>To open &amp; save with no warning, add this folder to Excel's Trusted Locations once: <code>C:\xampp\htdocs\gradeview system\uploads\grade_imports</code> (File → Options → Trust Center → Trusted Locations → Add new location). The file must be on a path your PC can reach (local XAMPP); a cloud server path cannot be edited in the desktop app.</p>
                             </div>
                         </div>
 
@@ -1835,12 +1835,11 @@ $students = $students_stmt->fetchAll();
                                                             <button type="button" class="btn btn-sm btn-outline-success js-view-grade" data-stored="<?php echo htmlspecialchars($gf['stored'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" data-name="<?php echo htmlspecialchars($gf['original_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" title="View grade sheet"><i class="fas fa-eye me-1"></i>View</button>
                                                             <?php
                                                             $fileUrl = $scheme . '://' . $host . $encodedBase . '/uploads/grade_imports/' . rawurlencode($gf['stored'] ?? '');
-                                                            // Prefer a local file:/// URL when the file is reachable on this machine
-                                                            // (e.g. localhost XAMPP) so Excel can edit & save in place. Otherwise
-                                                            // fall back to the public web URL so Open works from any host/directory
-                                                            // (e.g. Railway/cloud) where there is no shared local path.
-                                                            $isLocalHost = in_array(strtolower(parse_url($host, PHP_URL_HOST) ?: $host), ['localhost', '127.0.0.1', '::1'], true) || preg_match('/^127\./', (string)($host));
-                                                            $absPath = $isLocalHost ? realpath($gradeDir . '/' . ($gf['stored'] ?? '')) : false;
+                                                            // Build a file:/// URL to the real on-disk file so the Excel desktop app
+                                                            // opens it as a local, editable, savable file (no read-only warning).
+                                                            // Add this folder to Excel's Trusted Locations once to suppress the
+                                                            // security/Protected-View bar: File > Options > Trust Center.
+                                                            $absPath = realpath($gradeDir . '/' . ($gf['stored'] ?? ''));
                                                             $localFileUrl = '';
                                                             if ($absPath) {
                                                                 $p = str_replace('\\', '/', $absPath);
@@ -1849,9 +1848,6 @@ $students = $students_stmt->fetchAll();
                                                                 }, $p);
                                                                 $localFileUrl = 'file:///' . ltrim($p, '/');
                                                             }
-                                                            // Open-in-Excel (editable) only works from a local file:/// path, i.e.
-                                                            // localhost XAMPP. On cloud hosts the web URL opens read-only, so we
-                                                            // hide Open there and rely on Download -> edit -> Import instead.
                                                             $msExcelUrl = $localFileUrl ? 'ms-excel:ofe|u|' . $localFileUrl : '';
                                                             ?>
                                                             <?php if ($msExcelUrl): ?>
