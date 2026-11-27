@@ -3,11 +3,12 @@ FROM php:8.2-apache
 
 # Install system dependencies + PHP extensions required by the app
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        libpng-dev libjpeg-dev libfreetype6-dev libzip-dev libonig-dev libcurl4-openssl-dev \
+    libpng-dev libjpeg-dev libfreetype6-dev libzip-dev libonig-dev libcurl4-openssl-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) pdo_mysql mbstring fileinfo gd zip curl \
     && a2enmod rewrite \
     && rm -rf /var/lib/apt/lists/*
+    
 
 # Production PHP settings
 RUN { \
