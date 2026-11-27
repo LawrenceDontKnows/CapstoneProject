@@ -1884,7 +1884,7 @@ $subjects = $subjects_with_enrollments;
                                                     </div>
                                                 </div>
                                                 <div class="col-md-4 text-center">
-                                                    <img src="<?php echo htmlspecialchars($admin_info['profile_picture'] ?? 'image/default_avatar.png'); ?>" id="adminProfilePicturePreview" class="rounded-circle mb-2 cropper-preview" style="width: 120px; height: 120px; object-fit: cover; border: 3px solid #eee;" onerror="this.onerror=null;this.src='image/default_avatar.png';">
+                                                    <img src="<?php echo htmlspecialchars($admin_info['profile_picture'] ?? 'image/admin_logo.jpeg'); ?>" id="adminProfilePicturePreview" class="rounded-circle mb-2 cropper-preview" style="width: 120px; height: 120px; object-fit: cover; border: 3px solid #eee;" onerror="this.onerror=null;this.src='image/admin_logo.jpeg';">
                                                     <input type="file" class="form-control form-control-sm cropper-file-input" name="profile_picture" accept="image/*">
                                                     <input type="hidden" name="cropped_image_data" class="cropper-data">
                                                     <div class="form-text">Update Picture</div>
@@ -2343,7 +2343,7 @@ $subjects = $subjects_with_enrollments;
                         <input type="hidden" name="user_id" id="edit_user_id">
 
                         <div class="text-center mb-3">
-                            <img src="uploads/avatars/default.png" id="edit_profile_picture_preview" class="rounded-circle cropper-preview" style="width: 100px; height: 100px; object-fit: cover; border: 2px solid #eee;">
+                            <img src="image/default.png" id="edit_profile_picture_preview" class="rounded-circle cropper-preview" style="width: 100px; height: 100px; object-fit: cover; border: 2px solid #eee;">
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Update Profile Picture</label>
@@ -2695,7 +2695,7 @@ $subjects = $subjects_with_enrollments;
                 <div class="modal-body p-4">
                     <div class="row">
                         <div class="col-lg-4 text-center border-end pe-lg-4 mb-4 mb-lg-0 d-flex flex-column align-items-center">
-                            <img src="image/default_avatar.png" id="view_profile_picture" class="rounded-circle mb-3 avatar-lg" onerror="this.onerror=null;this.src='image/default_avatar.png';">
+                            <img src="image/admin_logo.jpeg" id="view_profile_picture" class="rounded-circle mb-3 avatar-lg" onerror="this.onerror=null;this.src='image/admin_logo.jpeg';">
                             <h4 class="mb-0 fw-bold" id="view_fullname_header"></h4>
                             <p class="text-muted" id="view_username_header"></p>
                             <div id="view_student_subheader" style="display: none;">

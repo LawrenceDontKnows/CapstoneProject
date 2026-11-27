@@ -597,7 +597,7 @@ foreach ($grades as $g) {
                                                                 <td class="ps-3 align-middle">
                                                                     <div class="fw-bold"><?php echo htmlspecialchars($grade['subject_name']); ?></div>
                                                                     <div class="d-flex align-items-center text-muted small mt-1">
-                                                                        <img src="<?php echo htmlspecialchars($grade['teacher_picture'] ?? 'image/default_avatar.png'); ?>" class="rounded-circle me-2 avatar-xs" onerror="this.onerror=null;this.src='image/default_avatar.png';">
+                                                                        <img src="<?php echo htmlspecialchars($grade['teacher_picture'] ?? 'image/default.png'); ?>" class="rounded-circle me-2 avatar-xs" onerror="this.onerror=null;this.src='image/default.png';">
                                                                         <span><?php echo htmlspecialchars($grade['teacher_first'] . ' ' . $grade['teacher_last']); ?></span>
                                                                     </div>
                                                                 </td>
@@ -737,7 +737,7 @@ foreach ($grades as $g) {
                                                         <span class="badge bg-<?php echo $status_color; ?>"><?php echo $status_text; ?></span>
                                                     </td>
                                                 <td class="d-flex align-items-center">
-                                                    <img src="<?php echo htmlspecialchars($grade['teacher_picture'] ?? 'image/default_avatar.png'); ?>" class="rounded-circle me-2 avatar-sm" onerror="this.onerror=null;this.src='image/default_avatar.png';">
+                                                    <img src="<?php echo htmlspecialchars($grade['teacher_picture'] ?? 'image/default.png'); ?>" class="rounded-circle me-2 avatar-sm" onerror="this.onerror=null;this.src='image/default.png';">
                                                     <?php echo htmlspecialchars($grade['teacher_first'] . ' ' . $grade['teacher_last']); ?>
                                                 </td>
                                                     <td><?php echo htmlspecialchars($grade['remarks'] ?? ''); ?></td>
@@ -815,7 +815,7 @@ foreach ($grades as $g) {
                                 <div class="card-body p-4">
                                     <div class="row">
                                         <div class="col-lg-4 text-center border-end pe-lg-4 mb-4 mb-lg-0 d-flex flex-column align-items-center justify-content-center">
-                                            <img src="<?php echo htmlspecialchars($student_info['profile_picture'] ?? 'image/default_avatar.png'); ?>" class="rounded-circle mb-3 avatar-lg" onerror="this.onerror=null;this.src='image/default_avatar.png';">
+                                            <img src="<?php echo htmlspecialchars($student_info['profile_picture'] ?? 'image/default.png'); ?>" class="rounded-circle mb-3 avatar-lg" onerror="this.onerror=null;this.src='image/default.png';">
                                             <h4 class="mb-0 fw-bold"><?php echo htmlspecialchars(($student_info['first_name'] ?? '') . ' ' . ($student_info['last_name'] ?? '')); ?></h4>
                                             <p class="text-muted"><?php echo htmlspecialchars(($student_info['course'] ?? 'N/A') . ' - ' . ($student_info['year_level'] ?? 'N/A')); ?></p>
                                         </div>
@@ -927,7 +927,7 @@ foreach ($grades as $g) {
                                             <div class="col-lg-4">
                                                 <h5 class="text-primary fw-bold border-bottom pb-2 mb-3"><i class="fas fa-image me-2"></i>Profile Picture</h5>
                                                 <div class="text-center">
-                                                    <img src="<?php echo htmlspecialchars($student_info['profile_picture'] ?? 'image/default_avatar.png'); ?>" id="profilePicturePreview" class="rounded-circle mb-2 cropper-preview avatar-xl" onerror="this.onerror=null;this.src='image/default_avatar.png';">
+                                                    <img src="<?php echo htmlspecialchars($student_info['profile_picture'] ?? 'image/default.png'); ?>" id="profilePicturePreview" class="rounded-circle mb-2 cropper-preview avatar-xl" onerror="this.onerror=null;this.src='image/default.png';">
                                                     <input type="file" class="form-control form-control-sm cropper-file-input" name="profile_picture" id="profilePictureInput" accept="image/*">
                                                     <input type="hidden" name="cropped_image_data" class="cropper-data">
                                                     <div class="form-text">Optional. Max 2MB. JPG, PNG, GIF.</div>
@@ -1800,7 +1800,7 @@ foreach ($grades as $g) {
                         + '<td class="text-center">' + periodGradeCell(g.final) + '</td>'
                         + '<td><span class="badge bg-' + gradeColorClass(gp) + '">' + gp.toFixed(2) + '</span></td>'
                         + '<td class="text-center"><span class="badge bg-' + status[1] + '">' + status[0] + '</span></td>'
-                        + '<td><img src="' + escapeHtmlSafe(g.teacher_picture || 'image/default_avatar.png') + '" class="rounded-circle me-2 avatar-sm" onerror="this.onerror=null;this.src=\'image/default_avatar.png\';">'
+                        + '<td><img src="' + escapeHtmlSafe(g.teacher_picture || 'image/default.png') + '" class="rounded-circle me-2 avatar-sm" onerror="this.onerror=null;this.src=\'image/default.png\';">'
                         + escapeHtmlSafe(((g.teacher_first || '') + ' ' + (g.teacher_last || '')).trim()) + '</td>'
                         + '<td>' + escapeHtmlSafe(g.remarks || '') + '</td>'
                         + '<td>' + formatGradeDate(g.graded_at) + '</td>'

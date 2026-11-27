@@ -1386,7 +1386,7 @@ $students = $students_stmt->fetchAll();
                                                                 <tr>
                                                                     <td class="ps-3 align-middle"><?php echo $i++; ?></td>
                                                                     <td class="fw-semibold align-middle">
-                                                                    <img src="<?php echo htmlspecialchars($student['profile_picture'] ?? 'image/default_avatar.png'); ?>" class="rounded-circle me-2 avatar-sm" onerror="this.onerror=null;this.src='image/default_avatar.png';">
+                                                                    <img src="<?php echo htmlspecialchars($student['profile_picture'] ?? 'image/default.png'); ?>" class="rounded-circle me-2 avatar-sm" onerror="this.onerror=null;this.src='image/default.png';">
                                                                         <?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>
                                                                     </td>
                                                                     <td><span class="badge bg-light text-dark border">@<?php echo htmlspecialchars($student['username']); ?></span></td>
@@ -1507,7 +1507,7 @@ $students = $students_stmt->fetchAll();
                                                 <td class="ps-3 text-muted"><?php echo htmlspecialchars($i++); ?></td>
                                                 <td>
                                                     <div class="student-name">
-                                                        <img src="<?php echo htmlspecialchars($student['profile_picture'] ?? 'image/default_avatar.png'); ?>" class="rounded-circle avatar-sm border" onerror="this.onerror=null;this.src='image/default_avatar.png';" alt="">
+                                                        <img src="<?php echo htmlspecialchars($student['profile_picture'] ?? 'image/default.png'); ?>" class="rounded-circle avatar-sm border" onerror="this.onerror=null;this.src='image/default.png';" alt="">
                                                         <div class="student-meta">
                                                             <span class="name"><?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?></span>
                                                             <span class="subtle"><?php echo htmlspecialchars($student['username']); ?></span>
@@ -1718,7 +1718,7 @@ $students = $students_stmt->fetchAll();
                                         </div>
                                         <div class="col-lg-4 text-center">
                                             <h5 class="text-primary fw-bold border-bottom pb-2 mb-3"><i class="fas fa-image me-2"></i>Profile Picture</h5>
-                                            <img src="<?php echo htmlspecialchars($teacher_info['profile_picture'] ?? 'image/default_avatar.png'); ?>" id="profilePicturePreview" class="rounded-circle mb-2 cropper-preview avatar-xl">
+                                            <img src="<?php echo htmlspecialchars($teacher_info['profile_picture'] ?? 'image/default.png'); ?>" id="profilePicturePreview" class="rounded-circle mb-2 cropper-preview avatar-xl">
                                             <input type="file" class="form-control form-control-sm cropper-file-input" name="profile_picture" id="profilePictureInput" accept="image/*">
                                             <input type="hidden" name="cropped_image_data" class="cropper-data">
                                             <div class="form-text">Max 2MB. JPG, PNG, GIF.</div>
@@ -2013,7 +2013,7 @@ $students = $students_stmt->fetchAll();
                                                     <tr class="align-middle">
                                                         <td class="ps-4">
                                                             <div class="d-flex align-items-center">
-                                                                <img src="<?php echo htmlspecialchars($notif['profile_picture'] ?? 'image/default_avatar.png'); ?>" class="rounded-circle me-2 avatar-sm" onerror="this.onerror=null;this.src='image/default_avatar.png';">
+                                                                <img src="<?php echo htmlspecialchars($notif['profile_picture'] ?? 'image/default.png'); ?>" class="rounded-circle me-2 avatar-sm" onerror="this.onerror=null;this.src='image/default.png';">
                                                                 <div class="fw-bold"><?php echo htmlspecialchars($notif['first_name'] . ' ' . $notif['last_name']); ?></div>
                                                             </div>
                                                         </td>
@@ -2296,7 +2296,7 @@ $students = $students_stmt->fetchAll();
                 <div class="modal-body p-4">
                     <div class="row">
                         <div class="col-lg-4 text-center border-end pe-lg-4 mb-4 mb-lg-0 d-flex flex-column align-items-center">
-                            <img src="image/default_avatar.png" id="view_profile_picture" class="rounded-circle mb-3 avatar-lg" onerror="this.onerror=null;this.src='image/default_avatar.png';">
+                            <img src="image/default.png" id="view_profile_picture" class="rounded-circle mb-3 avatar-lg" onerror="this.onerror=null;this.src='image/default.png';">
                             <h4 class="mb-0 fw-bold" id="view_fullname_header"></h4>
                             <p class="text-muted" id="view_username_header"></p>
                             <div id="view_student_subheader">
@@ -2702,8 +2702,8 @@ $students = $students_stmt->fetchAll();
                             };
 
                             const profilePic = modal.querySelector('#view_profile_picture');
-                            profilePic.src = (data.profile_picture && data.profile_picture.trim() !== '') ? data.profile_picture : 'image/default_avatar.png';
-                            profilePic.onerror = () => { profilePic.src = 'image/default_avatar.png'; };
+                            profilePic.src = (data.profile_picture && data.profile_picture.trim() !== '') ? data.profile_picture : 'image/default.png';
+                            profilePic.onerror = () => { profilePic.src = 'image/default.png'; };
 
                             modal.querySelector('#view_fullname_header').innerText = `${data.first_name} ${data.last_name}`;
                             modal.querySelector('#view_username_header').innerText = `@${data.username}`;
@@ -2962,7 +2962,7 @@ $students = $students_stmt->fetchAll();
                     }
                     if (data.students?.length > 0) {
                         modalTbody.innerHTML = data.students.map((s, i) =>
-                            `<tr><td>${i + 1}</td><td><img src="${s.profile_picture || 'image/default_avatar.png'}" class="rounded-circle me-2 avatar-sm" onerror="this.onerror=null;this.src='image/default_avatar.png';"> ${s.first_name} ${s.last_name}</td><td>${s.course}</td><td>${s.year_level}</td></tr>`
+                            `<tr><td>${i + 1}</td><td><img src="${s.profile_picture || 'image/default.png'}" class="rounded-circle me-2 avatar-sm" onerror="this.onerror=null;this.src='image/default.png';"> ${s.first_name} ${s.last_name}</td><td>${s.course}</td><td>${s.year_level}</td></tr>`
                         ).join('');
                     } else {
                         modalTbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No students enrolled.</td></tr>';
