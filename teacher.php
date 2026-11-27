@@ -266,6 +266,72 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'recom
     exit;
 }
 
+// Handle in-browser editor Save (overwrite the stored workbook, then recompute)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_grade_file_editor') {
+    if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], (string)$_POST['csrf_token'])) {
+        $_SESSION['message'] = "Invalid form submission. Please try again.";
+        $_SESSION['message_type'] = "danger";
+        header("Location: teacher.php?tab=manage-grades");
+        exit;
+    }
+    $stored = basename((string)($_POST['stored'] ?? ''));
+    $dir = __DIR__ . '/uploads/grade_imports';
+    $manifestFile = $dir . '/manifest.json';
+    $manifest = is_file($manifestFile) ? (json_decode(@file_get_contents($manifestFile), true) ?: []) : [];
+    if (!is_array($manifest)) { $manifest = []; }
+
+    $entry = null;
+    foreach ($manifest as $m) {
+        if (($m['stored'] ?? '') === $stored && $stored !== '') {
+            if ((int)($m['uploader_id'] ?? 0) === $teacher_id) { $entry = $m; }
+            break;
+        }
+    }
+
+    $uploaded = $_FILES['grade_file'] ?? null;
+    if (!$entry) {
+        $_SESSION['message'] = "File not found.";
+        $_SESSION['message_type'] = "warning";
+    } elseif (!$uploaded || ($uploaded['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+        $_SESSION['message'] = "No edited file was received.";
+        $_SESSION['message_type'] = "warning";
+    } elseif (($uploaded['error'] ?? 1) !== UPLOAD_ERR_OK) {
+        $_SESSION['message'] = "Upload failed while saving.";
+        $_SESSION['message_type'] = "danger";
+    } else {
+        $path = $dir . '/' . $stored;
+        if (move_uploaded_file($uploaded['tmp_name'], $path)) {
+            $subjectId = (int)($entry['subject_id'] ?? 0);
+            $subjectName = '';
+            if ($subjectId > 0) {
+                try {
+                    $q = $pdo->prepare("SELECT s.name FROM subjects s WHERE s.id = ? AND (s.teacher_id = ? OR s.teacher_id IS NULL OR EXISTS (SELECT 1 FROM grades g WHERE g.subject_id = s.id AND g.teacher_id = ?))");
+                    $q->execute([$subjectId, $teacher_id, $teacher_id]);
+                    $subjectName = (string)$q->fetchColumn();
+                } catch (Throwable $e) {}
+            }
+            if ($subjectId <= 0 || $subjectName === '') {
+                $_SESSION['message'] = "Changes saved. This file has no subject assigned, so grades were not recomputed.";
+                $_SESSION['message_type'] = "warning";
+            } else {
+                $res = importComputeGrades($pdo, $path, (string)($entry['original_name'] ?? $stored), $subjectId, $teacher_id);
+                if (!empty($res['error'])) {
+                    $_SESSION['message'] = "Changes saved, but grades were not recomputed: " . $res['error'];
+                    $_SESSION['message_type'] = "warning";
+                } else {
+                    $_SESSION['message'] = "Changes saved. Recomputed grades for " . (int)$res['updated'] . " student(s).";
+                    $_SESSION['message_type'] = "success";
+                }
+            }
+        } else {
+            $_SESSION['message'] = "Could not save the edited file.";
+            $_SESSION['message_type'] = "danger";
+        }
+    }
+    header("Location: teacher.php?tab=manage-grades");
+    exit;
+}
+
 // Handle Send Notification
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_notification'])) {
     // CSRF Token Validation
@@ -1752,8 +1818,8 @@ $students = $students_stmt->fetchAll();
                         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                             <div>
                                 <h4 class="fw-bold mb-1"><i class="fas fa-edit me-2 text-primary"></i>Manage Grade</h4>
-                                <p class="text-muted small mb-0">Import an Excel grade file, then click <strong>Open</strong> to edit it in the Excel desktop app and save — no download needed. After saving, click <strong>Compute</strong> to refresh grades. You can also <strong>Download</strong> a copy anytime. Grades compute automatically when a subject is selected so students see their final average and Passed/Failed status.</p>
-                                <p class="text-muted small mb-0 mt-1"><i class="fas fa-circle-info me-1"></i>To open &amp; save with no warning, add this folder to Excel's Trusted Locations once: <code>C:\xampp\htdocs\gradeview system\uploads\grade_imports</code> (File → Options → Trust Center → Trusted Locations → Add new location). The file must be on a path your PC can reach (local XAMPP); a cloud server path cannot be edited in the desktop app.</p>
+                                <p class="text-muted small mb-0">Import an Excel grade file, then click <strong>View</strong>, edit any cell right in the page, and click <strong>Save</strong> — no download and no Excel warning. Saving recomputes grades automatically. On a local server (XAMPP) you can also use <strong>Open</strong> to edit in the Excel desktop app, or <strong>Download</strong> a copy.</p>
+                                <p class="text-muted small mb-0 mt-1"><i class="fas fa-circle-info me-1"></i>The in-browser editor works on any host (including cloud). The desktop <strong>Open</strong> only works on localhost XAMPP; to avoid Excel's security bar there, add <code>C:\xampp\htdocs\gradeview system\uploads\grade_imports</code> to File → Options → Trust Center → Trusted Locations.</p>
                             </div>
                         </div>
 
@@ -1835,11 +1901,12 @@ $students = $students_stmt->fetchAll();
                                                             <button type="button" class="btn btn-sm btn-outline-success js-view-grade" data-stored="<?php echo htmlspecialchars($gf['stored'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" data-name="<?php echo htmlspecialchars($gf['original_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" title="View grade sheet"><i class="fas fa-eye me-1"></i>View</button>
                                                             <?php
                                                             $fileUrl = $scheme . '://' . $host . $encodedBase . '/uploads/grade_imports/' . rawurlencode($gf['stored'] ?? '');
-                                                            // Build a file:/// URL to the real on-disk file so the Excel desktop app
-                                                            // opens it as a local, editable, savable file (no read-only warning).
-                                                            // Add this folder to Excel's Trusted Locations once to suppress the
-                                                            // security/Protected-View bar: File > Options > Trust Center.
-                                                            $absPath = realpath($gradeDir . '/' . ($gf['stored'] ?? ''));
+                                                            // The Excel desktop "Open" uses a file:/// path, which only resolves on
+                                                            // the client when the app runs locally (localhost XAMPP). On a cloud host
+                                                            // the server path is unreachable, so we hide Open there; use the in-browser
+                                                            // View -> edit -> Save instead (no download, no read-only warning).
+                                                            $isLocalHost = in_array(strtolower(parse_url($host, PHP_URL_HOST) ?: $host), ['localhost', '127.0.0.1', '::1'], true) || preg_match('/^127\./', (string)($host));
+                                                            $absPath = $isLocalHost ? realpath($gradeDir . '/' . ($gf['stored'] ?? '')) : false;
                                                             $localFileUrl = '';
                                                             if ($absPath) {
                                                                 $p = str_replace('\\', '/', $absPath);
@@ -3178,6 +3245,8 @@ $students = $students_stmt->fetchAll();
                     <div class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin me-2"></i>Loading...</div>
                 </div>
                 <div class="modal-footer">
+                    <span id="gradeFileViewerHint" class="me-auto small text-muted">Edit any cell, then click Save.</span>
+                    <button type="button" class="btn btn-success" id="gradeFileViewerSave" data-csrf="<?php echo htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8'); ?>"><i class="fas fa-save me-1"></i>Save</button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
@@ -3245,27 +3314,32 @@ $students = $students_stmt->fetchAll();
             function renderSheet(name) {
                 if (!state.workbook || !name) { bodyEl.innerHTML = ''; return; }
                 var ws = state.workbook.Sheets[name];
-                if (!ws) { bodyEl.innerHTML = '<div class="text-muted">Sheet not found.</div>'; return; }
-                var rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', blankrows: false, raw: false });
-                if (!rows.length) { bodyEl.innerHTML = '<div class="text-center text-muted py-4">This sheet is empty.</div>'; return; }
-                var truncated = rows.length > MAX_ROWS;
-                if (truncated) { rows = rows.slice(0, MAX_ROWS); }
-                var maxCols = rows.reduce(function (m, r) { return Math.max(m, r.length); }, 0);
-                var tableHtml = '<table class="table table-bordered table-sm mb-0 align-middle">';
-                rows.forEach(function (r, i) {
-                    var tag = i === 0 ? 'th' : 'td';
+                if (!ws || !ws['!ref']) { bodyEl.innerHTML = '<div class="text-muted">Sheet not found or empty.</div>'; return; }
+                var range = XLSX.utils.decode_range(ws['!ref']);
+                var totalRows = range.e.r - range.s.r + 1;
+                var truncated = totalRows > MAX_ROWS;
+                var lastRow = truncated ? (range.s.r + MAX_ROWS - 1) : range.e.r;
+                var tableHtml = '<table class="table table-bordered table-sm mb-0 align-middle gx-edit">';
+                for (var R = range.s.r; R <= lastRow; R++) {
+                    var isHeader = (R === range.s.r);
                     tableHtml += '<tr>';
-                    for (var c = 0; c < maxCols; c++) {
-                        var v = formatViewerCell(r[c]);
-                        tableHtml += '<' + tag + ' class="' + (i === 0 ? 'table-light' : '') + '" style="white-space:nowrap;">' + escapeHtml(v) + '</' + tag + '>';
+                    for (var C = range.s.c; C <= range.e.c; C++) {
+                        var addr = XLSX.utils.encode_cell({ r: R, c: C });
+                        var cell = ws[addr];
+                        var v = cell ? formatViewerCell(cell.v) : '';
+                        if (isHeader) {
+                            tableHtml += '<th class="table-light" style="white-space:nowrap;">' + escapeHtml(v) + '</th>';
+                        } else {
+                            tableHtml += '<td class="gx-cell" contenteditable="true" data-addr="' + addr + '" style="white-space:nowrap;min-width:80px;">' + escapeHtml(v) + '</td>';
+                        }
                     }
                     tableHtml += '</tr>';
-                });
+                }
                 tableHtml += '</table>';
 
                 var html = '<div class="gx-scroll-top"><div class="gx-scroll-top-inner"></div></div>';
                 html += '<div class="table-responsive gx-scroll-bottom">' + tableHtml + '</div>';
-                if (truncated) { html += '<div class="text-muted small mt-2">Showing first ' + MAX_ROWS + ' rows. Open in Excel to see the full sheet.</div>'; }
+                if (truncated) { html += '<div class="text-muted small mt-2">Showing first ' + MAX_ROWS + ' rows for editing. Larger files should be edited in Excel.</div>'; }
                 bodyEl.innerHTML = html;
 
                 state.top = bodyEl.querySelector('.gx-scroll-top');
@@ -3276,6 +3350,17 @@ $students = $students_stmt->fetchAll();
 
                 state.top.addEventListener('scroll', function () { state.bottom.scrollLeft = state.top.scrollLeft; });
                 state.bottom.addEventListener('scroll', function () { state.top.scrollLeft = state.bottom.scrollLeft; });
+
+                // Persist edits back into the in-memory workbook so Save writes them out.
+                bodyEl.querySelectorAll('td.gx-cell').forEach(function (td) {
+                    td.addEventListener('input', function () {
+                        var addr = td.getAttribute('data-addr');
+                        var raw = td.textContent;
+                        var num = Number(raw);
+                        var isNum = raw.trim() !== '' && !isNaN(num) && isFinite(num);
+                        ws[addr] = isNum ? { t: 'n', v: num } : { t: 's', v: raw };
+                    });
+                });
             }
 
             function normalizeKey(s) {
@@ -3313,6 +3398,7 @@ $students = $students_stmt->fetchAll();
 
             async function openViewer(stored, name) {
                 state.workbook = null;
+                state.stored = stored;
                 titleEl.textContent = name || 'Grade Sheet';
                 sheetSel.innerHTML = '';
                 bodyEl.innerHTML = '<div class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin me-2"></i>Loading...</div>';
@@ -3443,6 +3529,32 @@ $students = $students_stmt->fetchAll();
 
             sheetSel.addEventListener('change', function () { renderSheet(this.value); });
             window.addEventListener('resize', syncTopWidth);
+
+            var saveBtn = document.getElementById('gradeFileViewerSave');
+            if (saveBtn) {
+                saveBtn.addEventListener('click', async function () {
+                    if (!state.workbook || !state.stored) return;
+                    var csrf = saveBtn.getAttribute('data-csrf') || '';
+                    saveBtn.disabled = true;
+                    var prev = saveBtn.innerHTML;
+                    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+                    try {
+                        var out = XLSX.write(state.workbook, { bookType: 'xlsx', type: 'array' });
+                        var fd = new FormData();
+                        fd.append('action', 'save_grade_file_editor');
+                        fd.append('csrf_token', csrf);
+                        fd.append('stored', state.stored);
+                        fd.append('grade_file', new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'edited.xlsx');
+                        var resp = await fetch('teacher.php', { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                        if (resp.redirected) { window.location.href = resp.url; return; }
+                        window.location.href = 'teacher.php?tab=manage-grades';
+                    } catch (err) {
+                        alert('Save failed: ' + (err && err.message ? err.message : err));
+                        saveBtn.disabled = false;
+                        saveBtn.innerHTML = prev;
+                    }
+                });
+            }
 
             document.addEventListener('click', function (e) {
                 var btn = e.target.closest('.js-view-grade');
