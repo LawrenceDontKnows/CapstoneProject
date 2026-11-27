@@ -58,7 +58,7 @@ if (APP_ENV === 'development') {
     ini_set('display_errors', 0);
     ini_set('display_startup_errors', 0);
     ini_set('log_errors', 1);
-    ini_set('error_log', '/tmp/php_errors.log');
+    ini_set('error_log', getenv('PHP_ERROR_LOG') ?: '/dev/stderr');
     error_reporting(E_ALL & ~E_DEPRECATED & ~E_STRICT);
 }
 
@@ -96,7 +96,7 @@ set_error_handler(function($severity, $message, $file, $line) {
         $file,
         $line
     );
-    error_log($log, 3, '/tmp/php_errors.log');
+    error_log($log);
     if (defined('APP_ENV') && APP_ENV === 'production') {
         return true; // Don't execute PHP internal handler
     }
@@ -115,7 +115,7 @@ register_shutdown_function(function() {
             $error['file'],
             $error['line']
         );
-        error_log($log, 3, '/tmp/php_errors.log');
+        error_log($log);
         // Show fatal details only when ?debug=1 is present (for troubleshooting).
         if (defined('APP_ENV') && APP_ENV === 'production' && !headers_sent()
             && isset($_GET['debug']) && $_GET['debug'] === '1') {

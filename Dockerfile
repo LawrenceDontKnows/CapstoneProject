@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN { \
     echo 'display_errors=Off'; \
     echo 'log_errors=On'; \
-    echo 'error_log=/tmp/php_errors.log'; \
+    echo 'error_log=/dev/stderr'; \
     echo 'memory_limit=512M'; \
     echo 'max_execution_time=120'; \
     echo 'max_input_time=120'; \
