@@ -1831,8 +1831,8 @@ $students = $students_stmt->fetchAll();
                         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                             <div>
                                 <h4 class="fw-bold mb-1"><i class="fas fa-edit me-2 text-primary"></i>Manage Grade</h4>
-                                <p class="text-muted small mb-0">Import an Excel grade file, then click <strong>View</strong>, edit any cell right in the page, and click <strong>Save</strong> — no download and no Excel warning. Saving recomputes grades automatically. On a local server (XAMPP) you can also use <strong>Open</strong> to edit in the Excel desktop app, or <strong>Download</strong> a copy.</p>
-                                <p class="text-muted small mb-0 mt-1"><i class="fas fa-circle-info me-1"></i>The in-browser editor works on any host (including cloud). The desktop <strong>Open</strong> only works on localhost XAMPP; to avoid Excel's security bar there, add <code>C:\xampp\htdocs\gradeview system\uploads\grade_imports</code> to File → Options → Trust Center → Trusted Locations.</p>
+                                <p class="text-muted small mb-0">Import an Excel grade file, then use <strong>Open</strong> to edit it in Excel with the desktop sync helper (auto-uploads on Ctrl+S), <strong>View</strong> for a read-only preview, <strong>Download</strong> for a copy, and <strong>Compute</strong> to calculate grades from the latest server copy.</p>
+                                <p class="text-muted small mb-0 mt-1"><i class="fas fa-circle-info me-1"></i>Desktop sync needs the helper running on your PC. <a href="sync_api.php?action=token" target="_blank" class="text-decoration-none fw-semibold">Connect desktop helper</a> (generate a device token, then paste it into <code>gradeview_helper.json</code>).</p>
                             </div>
                         </div>
 
@@ -1914,26 +1914,13 @@ $students = $students_stmt->fetchAll();
                                                             <button type="button" class="btn btn-sm btn-outline-success js-view-grade" data-stored="<?php echo htmlspecialchars($gf['stored'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" data-name="<?php echo htmlspecialchars($gf['original_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" title="View / edit grade sheet and save"><i class="fas fa-eye me-1"></i>View</button>
                                                             <?php
                                                             $fileUrl = $scheme . '://' . $host . $encodedBase . '/uploads/grade_imports/' . rawurlencode($gf['stored'] ?? '');
-                                                            // The Excel desktop "Open" uses a file:/// path, which only resolves on
-                                                            // Open always launches the Excel desktop software. On localhost we
-                                                            // use the real file:/// path (editable/savable). On a cloud host we pass
-                                                            // the public web URL to Excel (ms-excel:ofe|u|https://...); Excel opens it
-                                                            // (read-only for web files) — to edit & save back, use the in-browser Save
-                                                            // or Download -> edit -> Import.
-                                                            $isLocalHost = in_array(strtolower(parse_url($host, PHP_URL_HOST) ?: $host), ['localhost', '127.0.0.1', '::1'], true) || preg_match('/^127\./', (string)($host));
-                                                            $absPath = $isLocalHost ? realpath($gradeDir . '/' . ($gf['stored'] ?? '')) : false;
-                                                            $localFileUrl = '';
-                                                            if ($absPath) {
-                                                                $p = str_replace('\\', '/', $absPath);
-                                                                $p = preg_replace_callback('/[^A-Za-z0-9:\/_.~-]/', function ($m) {
-                                                                    return '%' . strtoupper(dechex(ord($m[0])));
-                                                                }, $p);
-                                                                $localFileUrl = 'file:///' . ltrim($p, '/');
-                                                            }
-                                                            $openTarget = $localFileUrl ?: $fileUrl;
-                                                            $msExcelUrl = 'ms-excel:ofe|u|' . $openTarget;
+                                                            // Open launches the desktop sync helper (local agent), which downloads
+                                                            // a writable copy, opens it in Excel, and auto-uploads on save. The helper
+                                                            // reads its own device token from gradeview_helper.json.
+                                                            $helperPort = 8765;
+                                                            $helperUrl = 'http://127.0.0.1:' . $helperPort . '/open?stored=' . rawurlencode($gf['stored'] ?? '') . '&name=' . rawurlencode($gf['original_name'] ?? ($gf['stored'] ?? 'grade.xlsx'));
                                                             ?>
-                                                            <a href="<?php echo htmlspecialchars($msExcelUrl, ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-sm btn-outline-info" title="Open in Excel desktop app"><i class="fas fa-external-link-alt me-1"></i>Open</a>
+                                                            <a href="<?php echo htmlspecialchars($helperUrl, ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-sm btn-outline-info" title="Open in Excel via the desktop sync helper (auto-syncs on save)"><i class="fas fa-external-link-alt me-1"></i>Open</a>
                                                             <a href="<?php echo htmlspecialchars($fileUrl, ENT_QUOTES, 'UTF-8'); ?>" download="<?php echo htmlspecialchars($gf['original_name'] ?? 'grades.xlsx', ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-sm btn-outline-primary" title="Download a writable copy, edit it in Excel, save, then import the updated file"><i class="fas fa-download me-1"></i>Download</a>
                                                             <?php if ((int)($gf['subject_id'] ?? 0) > 0): ?>
                                                             <form method="POST" class="d-inline m-0">
