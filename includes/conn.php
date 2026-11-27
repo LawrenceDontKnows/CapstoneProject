@@ -118,6 +118,16 @@ register_shutdown_function(function() {
         error_log($log, 3, '/tmp/php_errors.log');
     }
 });
+
+// Catch uncaught exceptions (e.g. uncaught PDOException) so they are logged
+// instead of producing a blank HTTP 500. In production, show a friendly message.
+set_exception_handler(function($e) {
+    error_log("Uncaught " . get_class($e) . ": " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
+    if (defined('APP_ENV') && APP_ENV === 'production' && !headers_sent()) {
+        http_response_code(500);
+        echo 'A system error occurred. Please try again later.';
+    }
+});
 // --- End Error Handling Configuration ---
 
 // --- Secure Session Configuration ---
