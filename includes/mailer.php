@@ -72,7 +72,13 @@ function sendMail($to, $subject, $body) {
         error_log($err);
         return false;
     }
-    
+
+    // Prefer Resend HTTP API when configured (works on hosts that block SMTP, e.g. Railway).
+    $resendKey = getenv('RESEND_API_KEY');
+    if ($resendKey) {
+        return sendViaResend($resendKey, $to, $subject, $body);
+    }
+
     $config = getSmtpConfig($pdo);
 
     if ($config === false) {
@@ -102,28 +108,31 @@ function sendMail($to, $subject, $body) {
 function sendOTP($to, $otp, $purpose = 'verification', $firstName = '') {
     $pdo = $GLOBALS['pdo'] ?? null;
     if (!$pdo) return false;
-    
-    $config = getSmtpConfig($pdo);
 
-    if ($config === false) {
-        $err = 'SMTP not configured: smtp_from_email or smtp_host is missing in Settings.';
-        error_log($err);
-        $_SESSION['mail_error'] = $err;
-        return false;
-    }
-
+    $resendKey = getenv('RESEND_API_KEY');
     $purposeLabel = ($purpose === 'password_reset') ? 'Password Reset' : 'Email Verification';
     $subject = "GradeView System - $purposeLabel OTP Code";
-
     $body = loadTemplate('otp_email.html', [
         'purpose_label' => $purposeLabel,
         'first_name' => $firstName ?: 'User',
         'otp_code' => $otp,
         'expires_in' => '10',
     ]);
-
     if ($body === false) {
         $err = 'Email template otp_email.html not found.';
+        error_log($err);
+        $_SESSION['mail_error'] = $err;
+        return false;
+    }
+
+    if ($resendKey) {
+        return sendViaResend($resendKey, $to, $subject, $body);
+    }
+
+    $config = getSmtpConfig($pdo);
+
+    if ($config === false) {
+        $err = 'SMTP not configured: smtp_from_email or smtp_host is missing in Settings.';
         error_log($err);
         $_SESSION['mail_error'] = $err;
         return false;
@@ -251,5 +260,45 @@ function sendPasswordResetEmail($pdo, $user) {
 }
 
 function isEmailConfigured($pdo) {
-    return !empty(getSystemSetting($pdo, 'smtp_from_email', ''));
+    return !empty(getenv('RESEND_API_KEY')) || !empty(getSystemSetting($pdo, 'smtp_from_email', ''));
+}
+
+/**
+ * Send an email via the Resend HTTP API (https://resend.com).
+ * Used when RESEND_API_KEY is set, since many hosts (e.g. Railway) block SMTP.
+ */
+function sendViaResend($apiKey, $to, $subject, $body) {
+    $from = getenv('RESEND_FROM') ?: getSystemSetting($GLOBALS['pdo'] ?? null, 'smtp_from_email', 'onboarding@resend.dev');
+    $payload = json_encode([
+        'from' => $from,
+        'to' => [$to],
+        'subject' => $subject,
+        'html' => $body,
+    ], JSON_UNESCAPED_SLASHES);
+
+    $ch = curl_init('https://api.resend.com/emails');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_HTTPHEADER => [
+            'Authorization: Bearer ' . $apiKey,
+            'Content-Type: application/json',
+        ],
+        CURLOPT_POSTFIELDS => $payload,
+        CURLOPT_TIMEOUT => 15,
+    ]);
+    $response = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr = curl_error($ch);
+    curl_close($ch);
+
+    if ($response === false || $code < 200 || $code >= 300) {
+        $err = 'Resend error (HTTP ' . $code . '): ' . ($curlErr ?: $response);
+        error_log($err);
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            $_SESSION['mail_error'] = $err;
+        }
+        return false;
+    }
+    return true;
 }
