@@ -6,9 +6,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpng-dev libjpeg-dev libfreetype6-dev libzip-dev libonig-dev libcurl4-openssl-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) pdo_mysql mbstring fileinfo gd zip curl \
-    && a2enmod rewrite \
     && rm -rf /var/lib/apt/lists/*
-    
+
+# Configure Apache MPM
+RUN a2dismod mpm_event mpm_worker || true
+RUN a2enmod mpm_prefork rewrite
 
 # Production PHP settings
 RUN { \
@@ -30,7 +32,6 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 COPY . /var/www/html/
 
 # Install PHP dependencies, including PHPMailer
-# composer.json lives in composer/; copy it to root so vendor/ lands at /var/www/html/vendor
 RUN cp /var/www/html/composer/composer.json /var/www/html/composer.json \
     && cp /var/www/html/composer/composer.lock /var/www/html/composer.lock \
     && composer install \
@@ -40,7 +41,7 @@ RUN cp /var/www/html/composer/composer.json /var/www/html/composer.json \
         --optimize-autoloader \
         --working-dir=/var/www/html
 
-# Ensure uploads directories exist and are writable
+# Ensure upload directories exist and are writable
 RUN mkdir -p /var/www/html/uploads/avatars \
     /var/www/html/uploads/grade_imports \
     /var/www/html/uploads/register_bg \
@@ -52,5 +53,6 @@ COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 EXPOSE 80
+
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["apache2-foreground"]
