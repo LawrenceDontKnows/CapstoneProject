@@ -9,8 +9,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Configure Apache MPM
-RUN a2dismod mpm_event mpm_worker || true
-RUN a2enmod mpm_prefork rewrite
+# Ensure only Apache prefork MPM is enabled
+RUN set -eux; \
+    a2dismod mpm_event || true; \
+    a2dismod mpm_worker || true; \
+    a2dismod mpm_prefork || true; \
+    a2enmod mpm_prefork; \
+    a2enmod rewrite; \
+    apache2ctl -M
 
 # Production PHP settings
 RUN { \
