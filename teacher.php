@@ -926,6 +926,8 @@ if ($filter_subject) {
     $params[] = $teacher_id;
 } else {
     // Overall view: get cumulative average of students managed by this teacher
+    $select_fields = "s.*, MAX(sub_list.all_subs) as enrolled_subjects";
+    
     $select_fields .= ", AVG(g.grade) as average,
                        fail_counts.prelim_fails, fail_counts.midterm_fails, 
                        fail_counts.prefinal_fails, fail_counts.final_fails";
