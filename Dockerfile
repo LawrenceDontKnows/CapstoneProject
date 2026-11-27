@@ -41,7 +41,7 @@ RUN mkdir -p /var/www/html/uploads/avatars \
     /var/www/html/uploads/grade_imports \
     /var/www/html/uploads/register_bg \
     /var/www/html/uploads/slideshow \
-    && chown -R www-data:www-data /var/www/html/uploads
+    && chown -R www-data:www-data /var/www/html/uploads /var/www/html/image
 
 # Runtime entrypoint: bind Apache to Railway's PORT
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
