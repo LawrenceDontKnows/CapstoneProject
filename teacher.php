@@ -1386,7 +1386,7 @@ $students = $students_stmt->fetchAll();
                                                                 <tr>
                                                                     <td class="ps-3 align-middle"><?php echo $i++; ?></td>
                                                                     <td class="fw-semibold align-middle">
-                                                                    <img src="<?php echo htmlspecialchars($student['profile_picture'] ?? 'image/default.png'); ?>" class="rounded-circle me-2 avatar-sm" onerror="this.onerror=null;this.src='image/default.png';">
+                                                                    <img src="<?php echo htmlspecialchars($student['profile_picture'] ?: 'image/default.png'); ?>" class="rounded-circle me-2 avatar-sm" onerror="this.onerror=null;this.src='image/default.png';">
                                                                         <?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?>
                                                                     </td>
                                                                     <td><span class="badge bg-light text-dark border">@<?php echo htmlspecialchars($student['username']); ?></span></td>
@@ -1507,7 +1507,7 @@ $students = $students_stmt->fetchAll();
                                                 <td class="ps-3 text-muted"><?php echo htmlspecialchars($i++); ?></td>
                                                 <td>
                                                     <div class="student-name">
-                                                        <img src="<?php echo htmlspecialchars($student['profile_picture'] ?? 'image/default.png'); ?>" class="rounded-circle avatar-sm border" onerror="this.onerror=null;this.src='image/default.png';" alt="">
+                                                        <img src="<?php echo htmlspecialchars($student['profile_picture'] ?: 'image/default.png'); ?>" class="rounded-circle avatar-sm border" onerror="this.onerror=null;this.src='image/default.png';" alt="">
                                                         <div class="student-meta">
                                                             <span class="name"><?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?></span>
                                                             <span class="subtle"><?php echo htmlspecialchars($student['username']); ?></span>
@@ -1718,7 +1718,7 @@ $students = $students_stmt->fetchAll();
                                         </div>
                                         <div class="col-lg-4 text-center">
                                             <h5 class="text-primary fw-bold border-bottom pb-2 mb-3"><i class="fas fa-image me-2"></i>Profile Picture</h5>
-                                            <img src="<?php echo htmlspecialchars($teacher_info['profile_picture'] ?? 'image/default.png'); ?>" id="profilePicturePreview" class="rounded-circle mb-2 cropper-preview avatar-xl">
+                                            <img src="<?php echo htmlspecialchars($teacher_info['profile_picture'] ?: 'image/default.png'); ?>" id="profilePicturePreview" class="rounded-circle mb-2 cropper-preview avatar-xl">
                                             <input type="file" class="form-control form-control-sm cropper-file-input" name="profile_picture" id="profilePictureInput" accept="image/*">
                                             <input type="hidden" name="cropped_image_data" class="cropper-data">
                                             <div class="form-text">Max 2MB. JPG, PNG, GIF.</div>
@@ -2013,7 +2013,7 @@ $students = $students_stmt->fetchAll();
                                                     <tr class="align-middle">
                                                         <td class="ps-4">
                                                             <div class="d-flex align-items-center">
-                                                                <img src="<?php echo htmlspecialchars($notif['profile_picture'] ?? 'image/default.png'); ?>" class="rounded-circle me-2 avatar-sm" onerror="this.onerror=null;this.src='image/default.png';">
+                                                                <img src="<?php echo htmlspecialchars($notif['profile_picture'] ?: 'image/default.png'); ?>" class="rounded-circle me-2 avatar-sm" onerror="this.onerror=null;this.src='image/default.png';">
                                                                 <div class="fw-bold"><?php echo htmlspecialchars($notif['first_name'] . ' ' . $notif['last_name']); ?></div>
                                                             </div>
                                                         </td>

@@ -114,7 +114,7 @@ if (!$is_ajax):
                     <?php else: foreach ($notifications as $notif): ?>
                         <li class="list-group-item p-3 notification-list-item <?php echo $notif['is_read'] ? '' : 'unread'; ?>">
                             <div class="d-flex align-items-start">
-                                <img src="<?php echo htmlspecialchars($notif['sender_picture'] ?? 'image/default.png'); ?>" class="rounded-circle me-3 avatar-md" onerror="this.onerror=null;this.src='image/default.png';">
+                                <img src="<?php echo htmlspecialchars($notif['sender_picture'] ?: 'image/default.png'); ?>" class="rounded-circle me-3 avatar-md" onerror="this.onerror=null;this.src='image/default.png';">
                                 <div class="flex-grow-1"> 
                                     <p class="mb-1 <?php echo $notif['is_read'] ? 'text-muted' : 'fw-bold'; ?>"><?php echo highlightNotificationKeywords($notif['message']); ?></p>
                                     <small class="text-muted">From: <?php echo htmlspecialchars($notif['sender_first'] . ' ' . $notif['sender_last']); ?> &bull; <?php echo date('F j, Y, g:i a', strtotime($notif['created_at'])); ?></small>
