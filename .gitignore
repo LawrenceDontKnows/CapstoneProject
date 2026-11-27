@@ -12,6 +12,7 @@
 # Sensitive / local-only
 /credentials/
 .env
+/desktop_helper/gradeview_helper.json
 
 # Composer binary
 /composer.phar
