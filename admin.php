@@ -2880,6 +2880,7 @@ $subjects = $subjects_with_enrollments;
             if(enrollModal){enrollModal.addEventListener("show.bs.modal",function(e){var b=e.relatedTarget;if(!b)return;var i=document.getElementById("enroll_csv_subject_id");var n=document.getElementById("enroll_csv_subject_name");if(i)i.value=b.dataset.subjectId||"";if(n)n.textContent=b.dataset.subjectName||"";});}
             var importModal=document.getElementById("importGradesModal");
             if(importModal){importModal.addEventListener("show.bs.modal",function(e){var b=e.relatedTarget;if(!b)return;var i=document.getElementById("import_grades_subject_id");var n=document.getElementById("import_grades_subject_name");if(i)i.value=b.dataset.subjectId||"";if(n)n.textContent=b.dataset.subjectName||"";});}
+        });
     </script>
 </body>
 </html>
