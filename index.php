@@ -212,25 +212,23 @@ $slideshowBgColor = '#f1f5f9';
             width: 100%;
             max-width: 440px;
             justify-self: end;
-            background:
-                linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.04) 45%, rgba(255, 255, 255, 0.02) 100%),
-                rgba(20, 24, 38, 0.45);
-            backdrop-filter: blur(22px) saturate(140%);
-            -webkit-backdrop-filter: blur(22px) saturate(140%);
-            border: 1px solid rgba(255, 255, 255, 0.28);
-            border-radius: 24px;
+            background: rgba(26, 28, 32, 0.52);
+            backdrop-filter: blur(24px) saturate(125%);
+            -webkit-backdrop-filter: blur(24px) saturate(125%);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 18px;
             padding: 2.5rem;
-            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35);
-            color: #ffffff;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 30px 70px rgba(0, 0, 0, 0.65);
+            color: #f5f5f4;
             color-scheme: dark;
         }
-        .login-card h2 { font-size: 1.6rem; font-weight: 800; margin: 0 0 .25rem; }
-        .login-card .subtitle { color: #cbd5e1; margin: 0 0 1.4rem; font-size: .95rem; }
-        .login-card .form-label { font-weight: 600; color: #cbd5e1; font-size: .85rem; }
+        .login-card h2 { font-size: 1.6rem; font-weight: 800; margin: 0 0 .25rem; color: #f5f5f4; }
+        .login-card .subtitle { color: #9ca3af; margin: 0 0 1.4rem; font-size: .95rem; }
+        .login-card .form-label { font-weight: 600; color: #9ca3af; font-size: .85rem; }
         .input-group {
-            border: 1px solid rgba(255, 255, 255, 0.22);
+            border: 1px solid rgba(255, 255, 255, 0.18);
             border-radius: 10px;
-            background: rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.08);
             backdrop-filter: blur(6px);
             -webkit-backdrop-filter: blur(6px);
             transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -254,14 +252,14 @@ $slideshowBgColor = '#f1f5f9';
             min-height: 46px;
             border: 0;
             border-radius: 12px;
-            background: linear-gradient(135deg, #6366f1, #22d3ee);
-            color: #ffffff;
+            background: #ffffff;
+            color: #0f172a;
             font-weight: 700;
             letter-spacing: .02em;
-            transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
-            box-shadow: 0 10px 24px rgba(99, 102, 241, 0.45);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
         }
-        .btn-custom:hover { filter: brightness(1.05); transform: translateY(-2px); color: #fff; box-shadow: 0 14px 30px rgba(34, 211, 238, 0.5); }
+        .btn-custom:hover { transform: translateY(-1px); color: #0f172a; background: #fff; box-shadow: 0 14px 30px rgba(0, 0, 0, 0.45); }
         .footer-link a { color: #a5b4fc; font-weight: 600; text-decoration: none; transition: color 0.2s; }
         .footer-link a:hover { color: #ffffff; text-decoration: underline; }
         .footer-link .text-muted { color: rgba(255, 255, 255, 0.7) !important; }
