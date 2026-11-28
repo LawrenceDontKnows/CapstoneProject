@@ -936,6 +936,8 @@ function normalizeImportHeader($header) {
         'first_name' => 'first_name', 'firstname' => 'first_name', 'last_name' => 'last_name', 'lastname' => 'last_name',
         'final_grade' => 'grade', 'overall' => 'grade', 'overall_grade' => 'grade', 'gwa' => 'grade',
         'average' => 'grade', 'semestral_grade' => 'grade', 'final_rating' => 'grade', 'fg' => 'grade',
+        'weighted_average' => 'grade', 'weighted_avg' => 'grade', 'weighted_grade' => 'grade',
+        'overall_average' => 'grade', 'overall_avg' => 'grade', 'final_average_grade' => 'grade',
         'remark' => 'remarks', 'comment' => 'remarks', 'notes' => 'remarks',
         'pre_lim' => 'prelim', 'mid_term' => 'midterm', 'pre_final' => 'prefinal',
         'classstanding' => 'class_standing', 'class_standing' => 'cs', 'class_stand' => 'cs',
@@ -1155,6 +1157,24 @@ function importComputeGrades($pdo, $filePath, $originalName, $subjectId, $teache
         $overallRaw = getImportValue($row, ['grade']);
         if ($overallRaw !== null && is_numeric($overallRaw)) {
             $finalGrade = (float)$overallRaw;
+        }
+
+        // 1b) Explicit overall/weighted column that is not caught by the 'grade'
+        // aliases (e.g. "Weighted Average", "Weighted Avg", "Overall Rating").
+        // Prefer it over averaging the period totals so the stored grade matches
+        // the overall value shown in the teacher's sheet.
+        if ($finalGrade === null) {
+            foreach ($gradeKeys as $k) {
+                $nk = normalizeImportHeader($k);
+                if (in_array($nk, $periods, true)) { continue; }
+                if (preg_match('/(overall|average|avg|gwa|weighted|rating|final|sem)/', $nk)) {
+                    $v = $row[$k] ?? null;
+                    if ($v !== null && is_numeric(trim((string)$v))) {
+                        $finalGrade = (float)$v;
+                        break;
+                    }
+                }
+            }
         }
 
         // 2) Otherwise average the available period totals (prelim/midterm/prefinal/final).
