@@ -1627,3 +1627,56 @@ img, svg, video, canvas { max-width: 100%; height: auto; }
     .table-responsive .table th,
     .table-responsive .table td { padding: 8px 9px; }
 }
+
+/* ==========================================================================
+   10. Manage Users tab - action buttons & alignment fixes
+   ========================================================================== */
+
+/* Action buttons: never compress; wrap into rows with even gaps */
+.user-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+.user-actions .btn {
+    flex: 0 0 auto;
+    min-width: 40px;
+    min-height: 40px;
+    padding: 0.35rem 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+#users .table td { vertical-align: middle; }
+#users .table td:last-child { min-width: 120px; }
+
+/* Header row: "Add New User" wraps under the title on narrow screens */
+@media (max-width: 575px) {
+    #users > .d-flex.justify-content-end {
+        justify-content: flex-start !important;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    #users > .d-flex.justify-content-end .btn { min-height: 42px; }
+
+    /* Search bar: input + button stay usable, button never clipped */
+    #users form.d-flex {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    #users form.d-flex .flex-grow-1 { flex: 1 1 100%; min-width: 0; }
+    #users form.d-flex .btn {
+        flex: 0 0 auto;
+        min-width: 44px;
+        min-height: 42px;
+    }
+    #users .card-header { padding: 0.7rem 0.9rem; }
+}
+
+/* Touch comfort on phones */
+@media (max-width: 767px) {
+    .user-actions .btn { min-width: 44px; min-height: 44px; }
+}

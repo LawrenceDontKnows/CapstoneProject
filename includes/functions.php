@@ -461,7 +461,7 @@ HTML;
 <a href="?action=archive_user&id={$user_id}&search_user={$search_query}&csrf_token={$csrf}" class="btn btn-sm btn-outline-secondary" onclick="return confirm('{$archive_confirm_text}')" title="Archive User"><i class="fas fa-archive"></i></a>
 HTML;
 
-    return $buttons;
+    return '<div class="user-actions">' . $buttons . '</div>';
 }
 
 /**
