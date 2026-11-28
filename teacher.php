@@ -1920,7 +1920,7 @@ $students = $students_stmt->fetchAll();
                             <div>
                                 <h4 class="fw-bold mb-1"><i class="fas fa-edit me-2 text-primary"></i>Manage Grade</h4>
                                 <p class="text-muted small mb-0">Import an Excel grade file, then use <strong>Open</strong> to edit it in Excel with the desktop sync helper (auto-uploads on Ctrl+S), <strong>View</strong> for a read-only preview, <strong>Download</strong> for a copy, and <strong>Compute</strong> to calculate grades from the latest server copy.</p>
-                                <p class="text-muted small mb-0 mt-1"><i class="fas fa-circle-info me-1"></i>Desktop sync needs the helper running on your PC. <a href="sync_api.php?action=token" target="_blank" class="text-decoration-none fw-semibold">Connect desktop helper</a> (generate a device token, then paste it into <code>gradeview_helper.json</code>).</p>
+                                <p class="text-muted small mb-0 mt-1"><i class="fas fa-circle-info me-1"></i>Desktop sync needs the helper running on your PC. It pairs automatically when you click <strong>Open</strong> — no token setup required.</p>
                             </div>
                         </div>
 
@@ -1969,6 +1969,22 @@ $students = $students_stmt->fetchAll();
                                     $basePath = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
                                     $baseSegments = array_values(array_filter(explode('/', trim($basePath, '/')), function($s) { return $s !== ''; }));
                                     $encodedBase = $baseSegments ? '/' . implode('/', array_map('rawurlencode', $baseSegments)) : '';
+
+                                    // Auto-pair the desktop helper: reuse the session's device token
+                                    // (or create one) so the helper needs no manual configuration.
+                                    $desktopToken = $_SESSION['desktop_token'] ?? '';
+                                    if ($desktopToken === '') {
+                                        $rawToken = bin2hex(random_bytes(24));
+                                        try {
+                                            $pdo->prepare("INSERT INTO sync_devices (teacher_id, token_hash, label) VALUES (?, ?, ?)")
+                                                ->execute([$currentTeacherId, hash('sha256', $rawToken), 'Desktop helper (auto)']);
+                                            $_SESSION['desktop_token'] = $rawToken;
+                                            $desktopToken = $rawToken;
+                                        } catch (Throwable $e) {
+                                            $desktopToken = '';
+                                        }
+                                    }
+                                    $helperServer = $scheme . '://' . $host . $encodedBase;
                                 ?>
                                 <span class="badge bg-secondary"><?php echo count($gradeFiles); ?></span>
                             </div>
@@ -2006,7 +2022,8 @@ $students = $students_stmt->fetchAll();
                                                             // a writable copy, opens it in Excel, and auto-uploads on save. The helper
                                                             // reads its own device token from gradeview_helper.json.
                                                             $helperPort = 8765;
-                                                            $helperUrl = 'http://127.0.0.1:' . $helperPort . '/open?stored=' . rawurlencode($gf['stored'] ?? '') . '&name=' . rawurlencode($gf['original_name'] ?? ($gf['stored'] ?? 'grade.xlsx'));
+                                                            $helperUrl = 'http://127.0.0.1:' . $helperPort . '/open?stored=' . rawurlencode($gf['stored'] ?? '') . '&name=' . rawurlencode($gf['original_name'] ?? ($gf['stored'] ?? 'grade.xlsx'))
+                                                                . ($desktopToken !== '' ? '&token=' . rawurlencode($desktopToken) . '&server=' . rawurlencode($helperServer) : '');
                                                             ?>
                                                             <a href="<?php echo htmlspecialchars($helperUrl, ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-sm btn-outline-info" title="Open in Excel via the desktop sync helper (auto-syncs on save)"><i class="fas fa-external-link-alt me-1"></i>Open</a>
                                                             <a href="<?php echo htmlspecialchars($fileUrl, ENT_QUOTES, 'UTF-8'); ?>" download="<?php echo htmlspecialchars($gf['original_name'] ?? 'grades.xlsx', ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-sm btn-outline-primary" title="Download a writable copy, edit it in Excel, save, then import the updated file"><i class="fas fa-download me-1"></i>Download</a>

@@ -15,15 +15,16 @@ uses `pystray` + `Pillow` if installed; otherwise it runs headless (console).
 
 CONFIG
 ------
-On first run a file `gradeview_helper.json` is created next to this script:
+Configuration is optional. GradeView automatically passes a fresh device token
+and the server URL each time you click "Open", so the helper pairs itself with
+no manual setup. A `gradeview_helper.json` next to this script can still be used
+to pin a server/port:
 
     {
       "server": "https://your-app.up.railway.app",
-      "token":  "PASTE_DEVICE_TOKEN_FROM_GRADEVIEW",
+      "token":  "",
       "port":   8765
     }
-
-Get the token in GradeView: Manage Grade -> "Connect desktop helper".
 """
 
 import json
@@ -209,12 +210,21 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_GET(self):
+        global TOKEN, SERVER
         parsed = parse.urlparse(self.path)
         qs = parse.parse_qs(parsed.query)
         if parsed.path == "/ping":
             self._send(200, json.dumps({"ok": True, "app": APP_NAME}))
             return
         if parsed.path == "/open":
+            # Auto-pairing: the server passes a fresh device token and its own
+            # URL on every Open, so no manual config/token setup is required.
+            t = (qs.get("token") or [""])[0]
+            s = (qs.get("server") or [""])[0]
+            if t:
+                TOKEN = t
+            if s:
+                SERVER = s.rstrip("/")
             stored = (qs.get("stored") or [""])[0]
             name = (qs.get("name") or [stored] or ["grade.xlsx"])[0]
             if not stored:
@@ -261,7 +271,7 @@ def run_tray():
 def main():
     os.makedirs(WORK_DIR, exist_ok=True)
     if not TOKEN:
-        print("No token configured. Edit gradeview_helper.json and set 'token'.")
+        print("Waiting for GradeView (click Open in Manage Grade to auto-pair).")
     run_tray()
     threading.Thread(target=monitor_loop, daemon=True).start()
     httpd = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
