@@ -169,11 +169,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             inset: 0;
             z-index: -3;
             background:
-                radial-gradient(55% 55% at 12% 15%, #06b6d4 0%, transparent 60%),
-                radial-gradient(50% 50% at 85% 12%, #f97316 0%, transparent 55%),
-                radial-gradient(60% 60% at 80% 88%, #db2777 0%, transparent 60%),
-                radial-gradient(55% 55% at 15% 85%, #4f46e5 0%, transparent 60%),
-                linear-gradient(135deg, #0b1020, #111827);
+                radial-gradient(38% 38% at 18% 22%, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.06) 40%, transparent 70%),
+                radial-gradient(30% 30% at 82% 30%, rgba(156, 163, 175, 0.45) 0%, transparent 70%),
+                radial-gradient(45% 45% at 78% 82%, rgba(255, 255, 255, 0.18) 0%, transparent 70%),
+                radial-gradient(40% 40% at 22% 80%, rgba(113, 113, 122, 0.4) 0%, transparent 70%),
+                linear-gradient(135deg, #121417 0%, #1f2227 100%);
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
@@ -203,24 +203,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         /* Frosted glass window container */
         .reg-card {
             position: relative;
-            background:
-                linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.04) 45%, rgba(255, 255, 255, 0.02) 100%),
-                rgba(15, 20, 35, 0.58);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            border-radius: 24px;
-            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+            background: rgba(26, 28, 32, 0.52);
+            backdrop-filter: blur(24px) saturate(125%);
+            -webkit-backdrop-filter: blur(24px) saturate(125%);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 18px;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 30px 70px rgba(0, 0, 0, 0.65);
             padding: 40px;
             padding-top: 64px;
             width: 100%;
-            max-width: 720px;
+            max-width: 920px;
             margin: 80px auto clamp(12px, 3vw, 32px);
-            color: #ffffff;
+            color: #f5f5f4;
             color-scheme: dark;
         }
         .header-box { text-align: center; margin-bottom: 1.5rem; }
-        .header-box h2 { font-weight: 800; color: #ffffff; letter-spacing: -0.5px; }
+        .header-box h2 { font-weight: 800; color: #f5f5f4; letter-spacing: -0.5px; }
         .header-box img {
             display: block;
             position: absolute;
@@ -252,8 +250,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             gap: 6px;
             padding: 8px 16px;
             border-radius: 999px;
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            background: rgba(255, 255, 255, 0.14);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            background: rgba(255, 255, 255, 0.08);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             transition: background 0.2s ease, color 0.2s ease;
@@ -262,25 +260,25 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         h3 {
             font-size: 1.05rem;
             font-weight: 700;
-            color: #67e8f9;
+            color: #d1d5db;
             margin: 26px 0 14px 0;
             text-transform: uppercase;
             letter-spacing: 0.08em;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             padding-bottom: 8px;
         }
         .form-label {
             font-weight: 600;
             font-size: 0.82rem;
-            color: #cbd5e1;
+            color: #9ca3af;
             margin-bottom: 4px;
         }
         .form-control, .form-select {
             border-radius: 10px;
             padding: 10px 14px;
             min-height: 44px;
-            background: rgba(255, 255, 255, 0.12);
-            border: 1px solid rgba(255, 255, 255, 0.24);
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.18);
             color: #ffffff;
             backdrop-filter: blur(6px);
             -webkit-backdrop-filter: blur(6px);
@@ -332,9 +330,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             .header-box h2 { font-size: 1.5rem; }
         }
         .input-group {
-            border: 1px solid rgba(255, 255, 255, 0.24);
+            border: 1px solid rgba(255, 255, 255, 0.18);
             border-radius: 10px;
-            background: rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.08);
             backdrop-filter: blur(6px);
             -webkit-backdrop-filter: blur(6px);
             transition: border-color 0.2s ease, box-shadow 0.2s ease;
