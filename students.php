@@ -534,7 +534,7 @@ foreach ($grades as $g) {
                             </div>
                         </div>
 
-                        <div class="d-flex justify-content-start align-items-center gap-2 small mb-4 p-2 bg-light rounded border">
+                        <div class="d-flex flex-wrap justify-content-start align-items-center gap-2 small mb-4 p-2 bg-light rounded border">
                             <strong class="me-2">Grade Legend:</strong>
                             <span class="badge bg-success">Excellent (90+)</span>
                             <span class="badge bg-primary">Very Good (80-89)</span>
