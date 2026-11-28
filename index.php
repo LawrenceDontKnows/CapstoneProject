@@ -212,29 +212,30 @@ $slideshowBgColor = '#f1f5f9';
             width: 100%;
             max-width: 440px;
             justify-self: end;
-            background: rgba(255, 255, 255, 0.12);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            border-radius: 20px;
-            padding: clamp(20px, 4vw, 36px);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+            background: rgba(20, 24, 38, 0.55);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            border-radius: 24px;
+            padding: 2.5rem;
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
             color: #ffffff;
+            color-scheme: dark;
         }
         .login-card h2 { font-size: 1.6rem; font-weight: 800; margin: 0 0 .25rem; }
-        .login-card .subtitle { color: rgba(255, 255, 255, 0.75); margin: 0 0 1.4rem; font-size: .95rem; }
-        .login-card .form-label { font-weight: 600; color: #ffffff; font-size: .85rem; }
+        .login-card .subtitle { color: #cbd5e1; margin: 0 0 1.4rem; font-size: .95rem; }
+        .login-card .form-label { font-weight: 600; color: #cbd5e1; font-size: .85rem; }
         .input-group {
-            border: 1px solid rgba(255, 255, 255, 0.28);
+            border: 1px solid rgba(255, 255, 255, 0.22);
             border-radius: 10px;
-            background: rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.12);
             transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
         .input-group:focus-within {
-            border-color: #818cf8;
-            box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.35);
+            border-color: rgba(255, 255, 255, 0.65);
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.18);
         }
-        .input-group-text { background: transparent; border: 0; color: #c7d2fe; }
+        .input-group-text { background: transparent; border: 0; color: #cbd5e1; }
         .form-control {
             border: 0;
             box-shadow: none !important;
@@ -242,21 +243,21 @@ $slideshowBgColor = '#f1f5f9';
             color: #ffffff;
             min-height: 44px;
         }
-        .form-control::placeholder { color: rgba(255, 255, 255, 0.6); }
-        #togglePassword { cursor: pointer; background: transparent; border: 0; color: #c7d2fe; }
+        .form-control::placeholder { color: rgba(255, 255, 255, 0.65); }
+        #togglePassword { cursor: pointer; background: transparent; border: 0; color: #cbd5e1; }
         .btn-custom {
             width: 100%;
             min-height: 46px;
             border: 0;
             border-radius: 12px;
-            background: linear-gradient(135deg, #6366f1, #22d3ee);
-            color: #ffffff;
-            font-weight: 700;
+            background: #ffffff;
+            color: #111827;
+            font-weight: 600;
             letter-spacing: .02em;
-            transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
-            box-shadow: 0 10px 24px rgba(99, 102, 241, 0.45);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
         }
-        .btn-custom:hover { filter: brightness(1.05); transform: translateY(-2px); color: #fff; }
+        .btn-custom:hover { transform: translateY(-2px); color: #111827; background: #fff; box-shadow: 0 14px 30px rgba(0, 0, 0, 0.45); }
         .footer-link a { color: #a5b4fc; font-weight: 600; text-decoration: none; transition: color 0.2s; }
         .footer-link a:hover { color: #ffffff; text-decoration: underline; }
         .footer-link .text-muted { color: rgba(255, 255, 255, 0.7) !important; }

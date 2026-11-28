@@ -224,12 +224,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             background: transparent;
             position: relative;
             z-index: 2;
+            will-change: transform;
             filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.45));
-            animation: logoFloat 4s ease-in-out infinite;
+            animation: logoFloat 3.6s ease-in-out infinite;
         }
         @keyframes logoFloat {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-8px); }
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-12px) scale(1.03); }
         }
         @media (prefers-reduced-motion: reduce) {
             .header-box img { animation: none; }
