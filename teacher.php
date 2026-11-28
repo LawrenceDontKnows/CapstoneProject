@@ -1238,6 +1238,12 @@ $students = $students_stmt->fetchAll();
         @media (max-width: 767.98px) {
             .table-responsive > .table { min-width: 640px; }
             .table-responsive > .table .text-nowrap { white-space: normal !important; }
+            .table-responsive > .history-table { min-width: 0; }
+            .history-table thead { display: none; }
+            .history-table, .history-table tbody, .history-table tr, .history-table td { display: block; width: 100%; }
+            .history-table tr { margin-bottom: .75rem; border: 1px solid #e5e7eb; border-radius: .5rem; padding: .5rem .75rem; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+            .history-table td { border: 0; padding: .25rem 0; max-width: 100% !important; min-width: 0 !important; white-space: normal !important; word-break: break-word; text-align: left !important; }
+            .history-table td[data-label]::before { content: attr(data-label); display: block; font-weight: 600; color: #64748b; font-size: .72rem; text-transform: uppercase; letter-spacing: .02em; margin-bottom: .1rem; }
         }
         .students-filter-card .search-input-wrap .form-control {
             padding-right: 2.1rem;
@@ -2074,7 +2080,7 @@ $students = $students_stmt->fetchAll();
                             </div>
                             <div class="card-body p-0">
                                 <div class="table-responsive">
-                                    <table class="table table-hover mb-0">
+                                    <table class="table table-hover mb-0 history-table">
                                         <thead class="table-light">
                                             <tr>
                                                 <th class="ps-4">Recipient</th>
@@ -2089,15 +2095,15 @@ $students = $students_stmt->fetchAll();
                                             <?php else: ?>
                                                 <?php foreach ($sent_notifications as $notif): ?>
                                                     <tr class="align-middle">
-                                                        <td class="ps-4" style="max-width:220px;">
+                                                        <td class="ps-4" data-label="Recipient" style="max-width:220px;">
                                                             <div class="d-flex align-items-center text-nowrap">
                                                                 <img src="<?php echo htmlspecialchars($notif['profile_picture'] ?: 'image/default.png'); ?>" class="rounded-circle me-2 avatar-sm flex-shrink-0" onerror="this.onerror=null;this.src='image/default.png';">
                                                                 <div class="fw-bold text-truncate"><?php echo htmlspecialchars($notif['first_name'] . ' ' . $notif['last_name']); ?></div>
                                                             </div>
                                                         </td>
-                                                        <td style="min-width:200px; word-break:break-word;"><small><?php echo highlightNotificationKeywords($notif['message']); ?></small></td>
-                                                        <td><small><?php echo date('M j, Y, g:i a', strtotime($notif['created_at'])); ?></small></td>
-                                                        <td class="text-center">
+                                                        <td data-label="Message" style="min-width:200px; word-break:break-word;"><small><?php echo highlightNotificationKeywords($notif['message']); ?></small></td>
+                                                        <td data-label="Date Sent"><small><?php echo date('M j, Y, g:i a', strtotime($notif['created_at'])); ?></small></td>
+                                                        <td class="text-center" data-label="Status">
                                                             <?php if ($notif['is_read']): ?>
                                                                 <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">Read</span>
                                                             <?php else: ?>
