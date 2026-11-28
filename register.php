@@ -222,7 +222,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             object-fit: contain !important;
             border-radius: 50%;
             background: transparent;
+            position: relative;
+            z-index: 2;
             filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.45));
+            animation: logoFloat 4s ease-in-out infinite;
+        }
+        @keyframes logoFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .header-box img { animation: none; }
         }
         .btn-back {
             color: #ffffff;
