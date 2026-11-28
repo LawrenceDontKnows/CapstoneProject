@@ -270,7 +270,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .form-label {
             font-weight: 600;
             font-size: 0.82rem;
-            color: #9ca3af;
+            color: #ffffff;
             margin-bottom: 4px;
         }
         .form-control, .form-select {

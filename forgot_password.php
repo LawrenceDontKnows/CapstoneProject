@@ -229,7 +229,7 @@ if (!empty($_SESSION['otp_verified']) && $_SESSION['otp_verified_user_id'] == $u
         .logo img { width: 80px; height: 80px; object-fit: cover; border-radius: 50%; margin-bottom: 1rem; filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.55)); }
         .logo h3 { color: #f5f5f4; font-weight: 800; }
         .logo .text-muted { color: #9ca3af !important; }
-        .form-label { color: #9ca3af; font-weight: 600; }
+        .form-label { color: #ffffff; font-weight: 600; }
         .form-control {
             background: rgba(255, 255, 255, 0.08);
             border: 1px solid rgba(255, 255, 255, 0.18);

@@ -224,7 +224,7 @@ $slideshowBgColor = '#f1f5f9';
         }
         .login-card h2 { font-size: 1.6rem; font-weight: 800; margin: 0 0 .25rem; color: #f5f5f4; }
         .login-card .subtitle { color: #9ca3af; margin: 0 0 1.4rem; font-size: .95rem; }
-        .login-card .form-label { font-weight: 600; color: #9ca3af; font-size: .85rem; }
+        .login-card .form-label { font-weight: 600; color: #ffffff; font-size: .85rem; }
         .input-group {
             border: 1px solid rgba(255, 255, 255, 0.18);
             border-radius: 10px;
