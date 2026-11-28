@@ -1512,10 +1512,14 @@ img, svg, video, canvas { max-width: 100%; height: auto; }
    Single symmetric gutter on .main-content; cancel Bootstrap row bleed
    and the inner .px-4 so the right side is not extra wide. */
 .container-fluid > .row {
+    display: block;
     margin-left: 0;
     margin-right: 0;
 }
 .main-content {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: clip;
     padding-inline: clamp(12px, 3vw, 24px);
 }
 .main-content > .px-4.py-4 {
