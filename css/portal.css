@@ -1194,34 +1194,9 @@ input, select, textarea, button {
     }
 }
 
-/* Mobile: flatten sidebar dropdowns into always-listed items (desktop unchanged) */
+/* Mobile: hide sidebar dropdown items entirely (desktop unchanged) */
 @media (max-width: 768px) {
-    .sidebar .nav-item.dropdown .dropdown-menu,
-    .sidebar .nav-item.dropdown .dropdown-menu.show {
-        display: block !important;
-        position: static !important;
-        float: none !important;
-        width: auto !important;
-        min-width: 0 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        border: 0 !important;
-        box-shadow: none !important;
-        background-color: transparent !important;
-        transform: none !important;
-        top: auto !important;
-        left: auto !important;
-        right: auto !important;
-        bottom: auto !important;
-    }
-    .sidebar .nav-item.dropdown .dropdown-menu .dropdown-item {
-        padding: 0.6rem 1.5rem;
-        white-space: normal;
-    }
-    .sidebar .nav-link.dropdown-toggle::after {
+    .sidebar .nav-item.dropdown {
         display: none !important;
-    }
-    .sidebar .nav-link.dropdown-toggle {
-        cursor: default;
     }
 }
