@@ -223,16 +223,15 @@ document.addEventListener('DOMContentLoaded', function() {
 <div class="modal fade" id="logoutConfirmModal" tabindex="-1" aria-labelledby="logoutConfirmLabel" aria-hidden="true" style="z-index: 1060;">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content logout-confirm-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="logoutConfirmLabel"><i class="fas fa-sign-out-alt me-2"></i>Logout</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p class="mb-0">Are you sure you want to logout?</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-logout-cancel" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-logout-confirm" id="logoutConfirmBtn"><i class="fas fa-sign-out-alt me-1"></i>Logout</button>
+            <button type="button" class="btn-close btn-close-white logout-confirm-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="logout-confirm-body">
+                <div class="logout-confirm-icon"><i class="fas fa-sign-out-alt"></i></div>
+                <h5 class="logout-confirm-title" id="logoutConfirmLabel">Logout</h5>
+                <p class="logout-confirm-text">Are you sure you want to logout?</p>
+                <div class="logout-confirm-actions">
+                    <button type="button" class="btn btn-logout-cancel" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-logout-confirm" id="logoutConfirmBtn"><i class="fas fa-sign-out-alt me-1"></i>Logout</button>
+                </div>
             </div>
         </div>
     </div>
@@ -242,24 +241,73 @@ document.addEventListener('DOMContentLoaded', function() {
     body.logout-modal-open .modal-backdrop.show {
         opacity: 1;
         background: rgba(10, 12, 16, 0.55);
-        backdrop-filter: blur(8px) saturate(120%);
-        -webkit-backdrop-filter: blur(8px) saturate(120%);
+        backdrop-filter: blur(10px) saturate(120%);
+        -webkit-backdrop-filter: blur(10px) saturate(120%);
     }
     #logoutConfirmModal .logout-confirm-content {
-        background: rgba(26, 28, 32, 0.72);
-        backdrop-filter: blur(24px) saturate(125%);
-        -webkit-backdrop-filter: blur(24px) saturate(125%);
-        border: 1px solid rgba(255, 255, 255, 0.18);
-        border-radius: 18px;
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 30px 70px rgba(0, 0, 0, 0.65);
+        position: relative;
+        overflow: hidden;
+        background:
+            radial-gradient(120% 90% at 50% -10%, rgba(239, 68, 68, 0.18) 0%, transparent 60%),
+            rgba(22, 24, 29, 0.78);
+        backdrop-filter: blur(28px) saturate(130%);
+        -webkit-backdrop-filter: blur(28px) saturate(130%);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 22px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26), 0 30px 80px rgba(0, 0, 0, 0.7);
         color: #f5f5f4;
+        padding: 2.25rem 1.75rem 1.75rem;
     }
-    #logoutConfirmModal .modal-header,
-    #logoutConfirmModal .modal-footer {
-        border-color: rgba(255, 255, 255, 0.1);
+    #logoutConfirmModal .logout-confirm-close {
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        opacity: 0.6;
+        transition: opacity 0.2s ease;
     }
-    #logoutConfirmModal .modal-title { color: #f5f5f4; font-weight: 700; }
-    #logoutConfirmModal .modal-body { color: #d1d5db; }
+    #logoutConfirmModal .logout-confirm-close:hover { opacity: 1; }
+    #logoutConfirmModal .logout-confirm-body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    #logoutConfirmModal .logout-confirm-icon {
+        width: 68px;
+        height: 68px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.6rem;
+        color: #ffffff;
+        background: linear-gradient(135deg, #ef4444, #f97316);
+        box-shadow: 0 12px 30px rgba(239, 68, 68, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+        margin-bottom: 1rem;
+    }
+    #logoutConfirmModal .logout-confirm-title {
+        color: #f5f5f4;
+        font-weight: 800;
+        font-size: 1.35rem;
+        margin: 0 0 0.35rem;
+        letter-spacing: -0.01em;
+    }
+    #logoutConfirmModal .logout-confirm-text {
+        color: #9ca3af;
+        margin: 0 0 1.6rem;
+        font-size: 0.95rem;
+    }
+    #logoutConfirmModal .logout-confirm-actions {
+        display: flex;
+        gap: 10px;
+        width: 100%;
+    }
+    #logoutConfirmModal .logout-confirm-actions .btn {
+        flex: 1 1 0;
+        min-height: 46px;
+        border-radius: 12px;
+        font-weight: 600;
+    }
     #logoutConfirmModal .btn-logout-cancel {
         background: rgba(255, 255, 255, 0.08);
         border: 1px solid rgba(255, 255, 255, 0.18);
@@ -273,11 +321,15 @@ document.addEventListener('DOMContentLoaded', function() {
         background: linear-gradient(135deg, #ef4444, #f97316);
         border: none;
         color: #ffffff;
-        font-weight: 700;
+        box-shadow: 0 10px 24px rgba(239, 68, 68, 0.4);
     }
     #logoutConfirmModal .btn-logout-confirm:hover {
-        filter: brightness(1.05);
+        filter: brightness(1.06);
         color: #ffffff;
+    }
+    @media (max-width: 400px) {
+        #logoutConfirmModal .logout-confirm-content { padding: 1.75rem 1.25rem 1.25rem; }
+        #logoutConfirmModal .logout-confirm-actions { flex-direction: column-reverse; }
     }
 </style>
 
