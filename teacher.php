@@ -1415,15 +1415,14 @@ $students = $students_stmt->fetchAll();
                             <i class="fas fa-book me-2"></i>Manage Subjects
                         </a>
                     </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle <?php echo in_array($active_tab, ['history', 'settings', 'profile']) ? 'active' : ''; ?>" href="#" id="moreDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-ellipsis-h me-2"></i>More
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="moreDropdown">
-                            <li><a class="dropdown-item <?php echo $active_tab === 'history' ? 'active' : ''; ?>" href="teacher.php?tab=history"><i class="fas fa-history me-2"></i>Notification History</a></li>
-                            <li><a class="dropdown-item <?php echo $active_tab === 'settings' ? 'active' : ''; ?>" href="teacher.php?tab=settings"><i class="fas fa-cogs me-2"></i>Grading Policy</a></li>
-                            <li><a class="dropdown-item <?php echo $active_tab === 'profile' ? 'active' : ''; ?>" href="teacher.php?tab=profile"><i class="fas fa-user-edit me-2"></i>My Profile</a></li>
-                        </ul>
+                    <li class="nav-item">
+                        <a class="nav-link <?php echo $active_tab === 'history' ? 'active' : ''; ?>" href="teacher.php?tab=history"><i class="fas fa-history me-2"></i>Notification History</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?php echo $active_tab === 'settings' ? 'active' : ''; ?>" href="teacher.php?tab=settings"><i class="fas fa-cogs me-2"></i>Grading Policy</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?php echo $active_tab === 'profile' ? 'active' : ''; ?>" href="teacher.php?tab=profile"><i class="fas fa-user-edit me-2"></i>My Profile</a>
                     </li>
                     <li class="nav-item mt-auto">
                         <a id="logoutBtn" class="nav-link text-warning" href="logout.php">

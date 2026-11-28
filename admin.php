@@ -1293,15 +1293,14 @@ $subjects = $subjects_with_enrollments;
                                 <i class="fas fa-book me-2"></i>Subjects
                             </a>
                         </li>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle <?php echo in_array($active_tab, ['archive', 'broadcast-history', 'audit']) ? 'active' : ''; ?>" href="#" id="moreDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="fas fa-ellipsis-h me-2"></i>More
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="moreDropdown">
-                                <li><a class="dropdown-item <?php echo $active_tab === 'archive' ? 'active' : ''; ?>" href="admin.php?tab=archive"><i class="fas fa-archive me-2"></i>Archive <span class="badge bg-light text-dark ms-2"><?php echo $total_archived; ?></span></a></li>
-                                <li><a class="dropdown-item <?php echo $active_tab === 'broadcast-history' ? 'active' : ''; ?>" href="admin.php?tab=broadcast-history"><i class="fas fa-mail-bulk me-2"></i>Broadcast History</a></li>
-                                <li><a class="dropdown-item <?php echo $active_tab === 'audit' ? 'active' : ''; ?>" href="admin.php?tab=audit"><i class="fas fa-history me-2"></i>Audit Log</a></li>
-                            </ul>
+                        <li class="nav-item">
+                            <a class="nav-link <?php echo $active_tab === 'archive' ? 'active' : ''; ?>" href="admin.php?tab=archive"><i class="fas fa-archive me-2"></i>Archive <span class="badge bg-light text-dark ms-2"><?php echo $total_archived; ?></span></a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?php echo $active_tab === 'broadcast-history' ? 'active' : ''; ?>" href="admin.php?tab=broadcast-history"><i class="fas fa-mail-bulk me-2"></i>Broadcast History</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?php echo $active_tab === 'audit' ? 'active' : ''; ?>" href="admin.php?tab=audit"><i class="fas fa-history me-2"></i>Audit Log</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link <?php echo $active_tab === 'settings' ? 'active' : ''; ?>" href="admin.php?tab=settings">

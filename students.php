@@ -444,13 +444,8 @@ foreach ($grades as $g) {
                                 <i class="fas fa-trending-up me-2"></i>Performance
                             </a>
                         </li>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle <?php echo $active_tab === 'profile' ? 'active' : ''; ?>" href="#" id="accountDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="fas fa-user-circle me-2"></i>Account
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="accountDropdown">
-                                <li><a class="dropdown-item <?php echo $active_tab === 'profile' ? 'active' : ''; ?>" href="students.php?tab=profile"><i class="fas fa-user-edit me-2"></i>My Profile</a></li>
-                            </ul>
+                        <li class="nav-item">
+                            <a class="nav-link <?php echo $active_tab === 'profile' ? 'active' : ''; ?>" href="students.php?tab=profile"><i class="fas fa-user-edit me-2"></i>My Profile</a>
                         </li>
                         <li class="nav-item mt-auto">
                             <a class="nav-link text-warning" href="logout.php" onclick="return confirm('Are you sure you want to logout?')">
