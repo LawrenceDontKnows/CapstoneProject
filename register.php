@@ -215,10 +215,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .header-box { text-align: center; margin-bottom: 1.5rem; }
         .header-box h2 { font-weight: 800; color: #ffffff; letter-spacing: -0.5px; }
         .header-box img {
+            display: block;
+            margin: 0 auto;
             width: 92px !important;
             height: 92px !important;
             object-fit: contain !important;
             border-radius: 50%;
+            background: transparent;
             filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.45));
         }
         .btn-back {
