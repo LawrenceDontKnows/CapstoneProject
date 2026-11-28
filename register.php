@@ -174,6 +174,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 radial-gradient(60% 60% at 80% 88%, #db2777 0%, transparent 60%),
                 radial-gradient(55% 55% at 15% 85%, #4f46e5 0%, transparent 60%),
                 linear-gradient(135deg, #0b1020, #111827);
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
         }
         /* Background image layer (admin-configured) */
         .register-bg {
@@ -201,13 +204,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .reg-card {
             background:
                 linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.04) 45%, rgba(255, 255, 255, 0.02) 100%),
-                rgba(20, 24, 38, 0.45);
-            backdrop-filter: blur(22px) saturate(140%);
-            -webkit-backdrop-filter: blur(22px) saturate(140%);
-            border: 1px solid rgba(255, 255, 255, 0.28);
+                rgba(15, 20, 35, 0.58);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
             border-radius: 24px;
-            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35);
-            padding: 2.5rem;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+            padding: 40px;
             width: 100%;
             max-width: 720px;
             margin: clamp(12px, 3vw, 32px) auto;
@@ -218,21 +221,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .header-box h2 { font-weight: 800; color: #ffffff; letter-spacing: -0.5px; }
         .header-box img {
             display: block;
-            margin: 0 auto;
-            width: 92px !important;
-            height: 92px !important;
-            object-fit: contain !important;
+            margin: 0 auto 12px;
+            width: 96px !important;
+            height: 96px !important;
+            object-fit: cover !important;
             border-radius: 50%;
             background: transparent;
             position: relative;
             z-index: 2;
             will-change: transform;
-            filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.45));
+            filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.55));
             animation: logoFloat 3.6s ease-in-out infinite;
+            animation-fill-mode: both;
         }
         @keyframes logoFloat {
             0%, 100% { transform: translateY(0) scale(1); }
-            50% { transform: translateY(-12px) scale(1.03); }
+            50% { transform: translateY(-14px) scale(1.04); }
         }
         @media (prefers-reduced-motion: reduce) {
             .header-box img { animation: none; }
@@ -244,12 +248,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 8px 14px;
+            padding: 8px 16px;
             border-radius: 999px;
-            border: 1px solid rgba(255, 255, 255, 0.22);
-            background: rgba(255, 255, 255, 0.12);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            background: rgba(255, 255, 255, 0.14);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             transition: background 0.2s ease, color 0.2s ease;
         }
         .btn-back:hover { color: #ffffff; background: rgba(255, 255, 255, 0.2); }
@@ -271,10 +275,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
         .form-control, .form-select {
             border-radius: 10px;
-            padding: 10px 12px;
+            padding: 10px 14px;
             min-height: 44px;
             background: rgba(255, 255, 255, 0.12);
-            border: 1px solid rgba(255, 255, 255, 0.22);
+            border: 1px solid rgba(255, 255, 255, 0.24);
             color: #ffffff;
             backdrop-filter: blur(6px);
             -webkit-backdrop-filter: blur(6px);
@@ -282,27 +286,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
         .form-control::placeholder { color: rgba(255, 255, 255, 0.65); }
         .form-control:focus, .form-select:focus {
-            background: rgba(255, 255, 255, 0.18);
-            border-color: rgba(255, 255, 255, 0.65);
-            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.18);
             outline: none;
+            background: rgba(255, 255, 255, 0.18);
+            border-color: rgba(255, 255, 255, 0.7);
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.15);
             color: #ffffff;
         }
-        .form-select option { background: #161a2a; color: #ffffff; }
+        .form-select option { background-color: #14192b; color: #ffffff; }
         .btn-primary {
+            width: 100%;
             background: #ffffff;
             border: none;
-            padding: 12px;
+            padding: 14px 20px;
             min-height: 46px;
-            font-weight: 600;
+            font-weight: 700;
             border-radius: 12px;
-            color: #111827;
+            color: #0f172a;
+            cursor: pointer;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
             box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
         }
         .btn-primary:hover {
-            transform: translateY(-2px);
-            color: #111827;
+            transform: translateY(-1px);
+            color: #0f172a;
             background: #ffffff;
             box-shadow: 0 14px 30px rgba(0, 0, 0, 0.45);
         }
@@ -323,7 +329,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             .header-box h2 { font-size: 1.5rem; }
         }
         .input-group {
-            border: 1px solid rgba(255, 255, 255, 0.22);
+            border: 1px solid rgba(255, 255, 255, 0.24);
             border-radius: 10px;
             background: rgba(255, 255, 255, 0.12);
             backdrop-filter: blur(6px);
