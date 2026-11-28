@@ -95,27 +95,34 @@ $slideshowBgColor = '#f1f5f9';
             --slideshow-opacity: <?php echo $slideshowOpacity / 100; ?>;
             --slideshow-bg-color: <?php echo $slideshowBgColor; ?>;
         }
+        * { box-sizing: border-box; }
         body {
             font-family: 'Inter', sans-serif;
             margin: 0;
-            min-height: 100vh;
+            min-height: 100dvh;
             overflow-x: hidden;
+            background: #0b1020;
+            color: #ffffff;
         }
-        .login-container {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            position: relative;
+        /* Vibrant mesh fallback (visible when slideshow disabled) */
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -4;
+            background:
+                radial-gradient(60% 60% at 12% 18%, #4f46e5 0%, transparent 60%),
+                radial-gradient(50% 50% at 88% 12%, #06b6d4 0%, transparent 55%),
+                radial-gradient(60% 60% at 82% 88%, #db2777 0%, transparent 60%),
+                linear-gradient(135deg, #0b1020, #111827);
         }
 
         /* Slideshow Background */
         .slideshow-bg {
             position: fixed;
             inset: 0;
-            z-index: -2;
-            background: #f1f5f9;
+            z-index: -3;
+            background: #0b1020;
             overflow: hidden;
         }
         .slideshow-bg .slide {
@@ -134,133 +141,144 @@ $slideshowBgColor = '#f1f5f9';
             object-fit: cover;
             object-position: center;
         }
-        .slideshow-bg .slide.active {
-            opacity: 1;
-            z-index: 1;
-        }
+        .slideshow-bg .slide.active { opacity: 1; z-index: 1; }
         .slideshow-overlay {
             position: fixed;
             inset: 0;
-            z-index: -1;
-            background: rgba(0, 0, 0, var(--slideshow-opacity, 0.3));
+            z-index: -2;
+            background: linear-gradient(135deg,
+                rgba(11, 16, 32, var(--slideshow-opacity, 0.3)) 0%,
+                rgba(11, 16, 32, 0.88) 100%);
         }
 
-        .login-card {
-            background: <?php echo $formGlass ? 'rgba(255, 255, 255, 0.15)' : '#ffffff'; ?>;
-            backdrop-filter: <?php echo $formGlass ? 'blur(20px)' : 'none'; ?>;
-            -webkit-backdrop-filter: <?php echo $formGlass ? 'blur(20px)' : 'none'; ?>;
-            border: <?php echo $formGlass ? '1px solid rgba(255, 255, 255, 0.3)' : 'none'; ?>;
-            box-shadow: <?php echo $formGlass ? '0 8px 32px rgba(0, 0, 0, 0.1)' : '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'; ?>;
-            border-radius: 1rem;
-            padding: 2.5rem;
+        /* Two-column layout */
+        .login-container {
+            position: relative;
+            z-index: 1;
+            min-height: 100dvh;
             width: 100%;
-            max-width: 420px;
-            border: none;
-            color: <?php echo $formGlass ? '#ffffff' : 'inherit'; ?>;
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            align-items: center;
+            gap: clamp(24px, 5vw, 72px);
+            padding: clamp(16px, 4vw, 56px) clamp(14px, 4vw, 24px);
         }
-        .login-card .form-label {
-            font-weight: 600;
-            color: <?php echo $formGlass ? '#ffffff' : '#475569'; ?>;
-        }
-        .btn-custom {
-            background: #1e3a8a;
-            color: white;
-            border: none;
+
+        /* Left brand showcase */
+        .brand-showcase { max-width: 560px; }
+        .brand-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: .5rem;
+            padding: .4rem .8rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            font-size: .72rem;
+            letter-spacing: .12em;
+            text-transform: uppercase;
             font-weight: 700;
-            padding: 12px;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 6px -1px rgba(30, 58, 138, 0.3);
         }
-        .btn-custom:hover {
-            background: #172a61;
-            color: white;
-            transform: translateY(-3px);
-            box-shadow: 0 7px 10px -1px rgba(30, 58, 138, 0.4);
-        }
-        .input-group {
-            border: <?php echo $formGlass ? '1px solid rgba(255, 255, 255, 0.3)' : '1px solid #e2e8f0'; ?>;
-            border-radius: 8px;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
-            background: <?php echo $formGlass ? 'rgba(255, 255, 255, 0.2)' : 'transparent'; ?>;
-        }
-        .input-group:focus-within {
-            border-color: #1e3a8a;
-            box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
-        }
-        .input-group-text {
-            background-color: <?php echo $formGlass ? 'rgba(255, 255, 255, 0.2)' : 'transparent'; ?>;
-            border: none;
-            color: <?php echo $formGlass ? '#ffffff' : '#94a3b8'; ?>;
-        }
-        .form-control {
-            border: none;
-            box-shadow: none !important;
-            background: <?php echo $formGlass ? 'transparent' : 'white'; ?>;
-            color: <?php echo $formGlass ? '#ffffff' : 'inherit'; ?>;
-        }
-        .form-control::placeholder {
-            color: <?php echo $formGlass ? 'rgba(255, 255, 255, 0.7)' : '#94a3b8'; ?>;
-        }
-        #togglePassword {
-            cursor: pointer;
-            background-color: transparent;
-            border: none;
-        }
-        .toast-container { z-index: 1060; }
-        .footer-link a {
-            color: <?php echo $formGlass ? '#ffffff' : '#1e3a8a'; ?>;
-            font-weight: 600;
-            text-decoration: none;
-            transition: color 0.2s;
-        }
-        .footer-link a:hover {
-            color: <?php echo $formGlass ? '#ffffff' : '#dc2626'; ?>;
-            text-decoration: underline;
-        }
-        .footer-link .text-muted {
-            color: <?php echo $formGlass ? 'rgba(255, 255, 255, 0.8)' : ''; ?> !important;
-        }
-        .logo {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-        .logo img {
-            width: 100px;
-            height: 100px;
-            object-fit: cover;
-            border-radius: 50%;
-            margin-bottom: 1rem;
-        }
-        .logo h3 {
-            color: <?php echo $formGlass ? '#ffffff' : '#1e293b'; ?>;
+        .brand-showcase h1 {
+            font-size: clamp(2rem, 5vw, 3.4rem);
+            line-height: 1.05;
             font-weight: 800;
+            margin: 1rem 0;
             letter-spacing: -1px;
         }
-        .alert {
-            background: <?php echo $formGlass ? 'rgba(255, 255, 255, 0.9)' : 'inherit'; ?>;
-            backdrop-filter: <?php echo $formGlass ? 'blur(10px)' : 'none'; ?>;
+        .brand-showcase p {
+            font-size: clamp(.95rem, 2.2vw, 1.15rem);
+            color: rgba(255, 255, 255, 0.85);
+            max-width: 46ch;
+            margin: 0;
+        }
+        .brand-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .5rem;
+            margin-top: 1.5rem;
+        }
+        .brand-pills span {
+            padding: .45rem .8rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            font-size: .8rem;
+            font-weight: 600;
         }
 
+        /* Right glass auth card */
+        .login-card {
+            width: 100%;
+            max-width: 440px;
+            justify-self: end;
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 20px;
+            padding: clamp(20px, 4vw, 36px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+            color: #ffffff;
+        }
+        .login-card h2 { font-size: 1.6rem; font-weight: 800; margin: 0 0 .25rem; }
+        .login-card .subtitle { color: rgba(255, 255, 255, 0.75); margin: 0 0 1.4rem; font-size: .95rem; }
+        .login-card .form-label { font-weight: 600; color: #ffffff; font-size: .85rem; }
+        .input-group {
+            border: 1px solid rgba(255, 255, 255, 0.28);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.08);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .input-group:focus-within {
+            border-color: #818cf8;
+            box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.35);
+        }
+        .input-group-text { background: transparent; border: 0; color: #c7d2fe; }
+        .form-control {
+            border: 0;
+            box-shadow: none !important;
+            background: transparent;
+            color: #ffffff;
+            min-height: 44px;
+        }
+        .form-control::placeholder { color: rgba(255, 255, 255, 0.6); }
+        #togglePassword { cursor: pointer; background: transparent; border: 0; color: #c7d2fe; }
+        .btn-custom {
+            width: 100%;
+            min-height: 46px;
+            border: 0;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #6366f1, #22d3ee);
+            color: #ffffff;
+            font-weight: 700;
+            letter-spacing: .02em;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+            box-shadow: 0 10px 24px rgba(99, 102, 241, 0.45);
+        }
+        .btn-custom:hover { filter: brightness(1.05); transform: translateY(-2px); color: #fff; }
+        .footer-link a { color: #a5b4fc; font-weight: 600; text-decoration: none; transition: color 0.2s; }
+        .footer-link a:hover { color: #ffffff; text-decoration: underline; }
+        .footer-link .text-muted { color: rgba(255, 255, 255, 0.7) !important; }
+        .toast-container { z-index: 1060; }
+        .alert { background: rgba(255, 255, 255, 0.92); color: #1f2937; }
+
+        /* Tablet / mobile stack */
+        @media (max-width: 991px) {
+            .login-container {
+                grid-template-columns: 1fr;
+                justify-items: center;
+                gap: 24px;
+                padding: 24px 16px;
+            }
+            .brand-showcase { text-align: center; max-width: 520px; margin: 0 auto; }
+            .brand-pills { justify-content: center; }
+            .login-card { justify-self: center; max-width: 460px; }
+        }
         @media (max-width: 400px) {
-            .login-card { padding: 1.5rem; max-width: 100%; }
-            .logo h3 { font-size: 1.4rem; }
+            .login-card { padding: 18px; border-radius: 16px; }
+            .brand-showcase h1 { font-size: 1.9rem; }
         }
-        @media (max-width: 320px) {
-            .login-card { padding: 1.25rem; }
-            .btn-custom { font-size: 0.85rem; padding: 10px; }
-        }
-
-        /* Auto-adaptive text color for glass card over light/dark slideshow */
-        .login-card.glass { --l-text:#ffffff; --l-muted:rgba(255,255,255,0.85); --l-link:#ffffff; --l-icon:#ffffff; --l-placeholder:rgba(255,255,255,0.7); text-shadow: 0 0 3px rgba(0,0,0,0.9), 0 1px 2px rgba(0,0,0,0.9); }
-        .login-card.glass.on-light-bg { --l-text:#1e293b; --l-muted:#475569; --l-link:#1e3a8a; --l-icon:#475569; --l-placeholder:#94a3b8; text-shadow: none; }
-        .login-card.glass .logo h3,
-        .login-card.glass .form-label { color: var(--l-text) !important; }
-        .login-card.glass .form-control { color: #000000 !important; text-shadow: none !important; }
-        .login-card.glass .form-control::placeholder { color: #64748b !important; text-shadow: none !important; }
-        .login-card.glass .input-group-text { color: var(--l-icon) !important; }
-        .login-card.glass .footer-link .text-muted { color: var(--l-muted) !important; }
-        .login-card.glass .footer-link a { color: var(--l-link) !important; }
     </style>
 </head>
 <body>
@@ -283,11 +301,20 @@ $slideshowBgColor = '#f1f5f9';
     </div>
 
     <div class="login-container">
-        <div class="login-card text-center<?php echo $formGlass ? ' glass' : ''; ?>">
-            <div class="logo">
-                <img src="<?php echo getSystemLogoUrl($pdo); ?>" alt="Logo" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover;">
-                <h3>GradeView</h3>
+        <section class="brand-showcase">
+            <span class="brand-badge"><i class="fas fa-graduation-cap"></i> GradeView Portal</span>
+            <h1>Every grade,<br>clearly in view.</h1>
+            <p>One secure portal to manage students, teachers, subjects, and grade records across your institution.</p>
+            <div class="brand-pills">
+                <span>Role-based access</span>
+                <span>Real-time grades</span>
+                <span>Secure &amp; reliable</span>
             </div>
+        </section>
+
+        <div class="login-card">
+            <h2>Sign in</h2>
+            <p class="subtitle">Good to see you again.</p>
 
             <form method="POST" class="text-start">
                 <?php if (isset($error)): ?>
@@ -323,7 +350,7 @@ $slideshowBgColor = '#f1f5f9';
                 </button>
 
                 <div class="d-flex justify-content-between small">
-                    <a href="forgot_password.php" class="text-decoration-none" style="color: <?php echo $formGlass ? '#ffffff' : 'inherit'; ?>;">Forgot password?</a>
+                    <a href="forgot_password.php" class="text-decoration-none">Forgot password?</a>
                 </div>
             </form>
 
