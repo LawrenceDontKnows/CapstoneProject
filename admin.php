@@ -2511,6 +2511,7 @@ $subjects = $subjects_with_enrollments;
                 <form method="POST" id="broadcastForm">
                     <div class="modal-body">
                         <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+                        <input type="hidden" name="broadcast_notification" value="1">
                         <div class="mb-3">
                             <label class="form-label">Target Audience</label>
                             <div class="p-3 border rounded">
