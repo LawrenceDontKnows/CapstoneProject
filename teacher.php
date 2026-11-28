@@ -1228,8 +1228,10 @@ $students = $students_stmt->fetchAll();
             display: none !important;
         }
         @media (max-width: 991px) {
-            .students-table .enrolled-subjects { max-width: 160px; }
-            .students-table .student-name { min-width: 150px; }
+            .students-table .enrolled-subjects { max-width: 120px; }
+            .students-table .student-name { min-width: 0; }
+            .students-table .student-meta .name { white-space: normal; word-break: break-word; }
+            .students-table .student-meta { min-width: 0; }
         }
         .students-filter-card .search-input-wrap .form-control {
             padding-right: 2.1rem;
