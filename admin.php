@@ -315,7 +315,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $ins = $pdo->prepare($sql);
                     foreach ($recipients as $r) {
                         try {
-                            $ins->execute([$sender_id, $r['id']]);
+                            $ins->execute([$sender_id, $r['id'], $message]);
                             $sent++;
                         } catch (Exception $e) {
                             $dbError = $e->getMessage();

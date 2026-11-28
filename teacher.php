@@ -458,7 +458,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['notify_class'])) {
                 $ins = $pdo->prepare("INSERT INTO notifications (sender_id, recipient_id, message) VALUES (?, ?, ?)");
                 foreach ($students as $s) {
                     try {
-                        $ins->execute([$sender_id, $s['student_id']]);
+                        $ins->execute([$sender_id, $s['student_id'], $message]);
                         $sent++;
                     } catch (PDOException $e) {
                         error_log("Notify Class insert failed for student {$s['student_id']}: " . $e->getMessage());
