@@ -2574,10 +2574,6 @@ $subjects = $subjects_with_enrollments;
                                 </div>
                                 <hr class="my-2">
                                 <div class="form-check">
-                                    <input class="form-check-input target-group-checkbox" type="checkbox" name="target_groups[]" value="admin" id="targetAdmins">
-                                    <label class="form-check-label" for="targetAdmins">Admins</label>
-                                </div>
-                                <div class="form-check">
                                     <input class="form-check-input target-group-checkbox" type="checkbox" name="target_groups[]" value="teacher" id="targetTeachers">
                                     <label class="form-check-label" for="targetTeachers">Teachers</label>
                                 </div>
