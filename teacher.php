@@ -1920,7 +1920,7 @@ $students = $students_stmt->fetchAll();
                             <div>
                                 <h4 class="fw-bold mb-1"><i class="fas fa-edit me-2 text-primary"></i>Manage Grade</h4>
                                 <p class="text-muted small mb-0">Import an Excel grade file, then use <strong>Open</strong> to edit it in Excel with the desktop sync helper (auto-uploads on Ctrl+S), <strong>View</strong> for a read-only preview, <strong>Download</strong> for a copy, and <strong>Compute</strong> to calculate grades from the latest server copy.</p>
-                                <p class="text-muted small mb-0 mt-1"><i class="fas fa-circle-info me-1"></i>Desktop sync needs the helper running on your PC. It pairs automatically when you click <strong>Open</strong> — no token setup required.</p>
+                                <p class="text-muted small mb-0 mt-1"><i class="fas fa-circle-info me-1"></i>Desktop sync needs the helper running on your PC. Start it with <code>desktop_helper\start_helper.bat</code> (keep it in the tray), then click <strong>Open</strong> — it pairs automatically, no token setup required.</p>
                             </div>
                         </div>
 
