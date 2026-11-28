@@ -454,19 +454,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['notify_class'])) {
                 $sendEmail = !empty($_POST['send_email']);
                 $emailReady = $sendEmail && isEmailConfigured($pdo);
                 $emailed = 0;
-                $pdo->beginTransaction();
-                try {
-                    $sql = "INSERT INTO notifications (sender_id, recipient_id, message) VALUES (?, ?, ?)";
-                    $stmt = $pdo->prepare($sql);
-                    foreach ($students as $s) {
-                        $stmt->execute([$sender_id, $s['student_id']]);
+                $sent = 0;
+                $ins = $pdo->prepare("INSERT INTO notifications (sender_id, recipient_id, message) VALUES (?, ?, ?)");
+                foreach ($students as $s) {
+                    try {
+                        $ins->execute([$sender_id, $s['student_id']]);
+                        $sent++;
+                    } catch (PDOException $e) {
+                        error_log("Notify Class insert failed for student {$s['student_id']}: " . $e->getMessage());
                     }
-                    $pdo->commit();
-                } catch (PDOException $e) {
-                    $pdo->rollBack();
+                }
+
+                if ($sent === 0) {
                     $_SESSION['message'] = "Database Error: Could not send the class broadcast.";
                     $_SESSION['message_type'] = "danger";
-                    error_log("Notify Class Error: " . $e->getMessage());
                     header("Location: teacher.php?tab=dashboard");
                     exit;
                 }
@@ -474,16 +475,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['notify_class'])) {
                 if ($emailReady) {
                     foreach ($students as $s) {
                         if (empty($s['email']) || !filter_var($s['email'], FILTER_VALIDATE_EMAIL)) continue;
-                        $body = '<div style="font-family:Arial,sans-serif;font-size:14px;color:#1f2937">'
-                            . '<p>Hello ' . htmlspecialchars($s['first_name'] ?: 'Student') . ',</p>'
-                            . '<p>' . nl2br(htmlspecialchars($message)) . '</p>'
-                            . '<p style="color:#6b7280;font-size:12px;margin-top:16px">Sent by your teacher via GradeView.</p>'
-                            . '</div>';
-                        if (sendMail($s['email'], 'GradeView Class Broadcast', $body)) $emailed++;
+                        try {
+                            $body = '<div style="font-family:Arial,sans-serif;font-size:14px;color:#1f2937">'
+                                . '<p>Hello ' . htmlspecialchars($s['first_name'] ?: 'Student') . ',</p>'
+                                . '<p>' . nl2br(htmlspecialchars($message)) . '</p>'
+                                . '<p style="color:#6b7280;font-size:12px;margin-top:16px">Sent by your teacher via GradeView.</p>'
+                                . '</div>';
+                            if (sendMail($s['email'], 'GradeView Class Broadcast', $body)) $emailed++;
+                        } catch (Throwable $te) {
+                            error_log("Class broadcast email failed for {$s['email']}: " . $te->getMessage());
+                        }
                     }
                 }
 
-                $_SESSION['message'] = "Notification sent to all " . count($students) . " students in the class."
+                $_SESSION['message'] = "Notification sent to " . $sent . " students in the class."
                     . ($sendEmail ? ($emailReady ? " Email copies sent: {$emailed}." : " (Email not configured, so no email copies were sent.)") : "");
                 $_SESSION['message_type'] = "success";
             } else {

@@ -309,19 +309,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $sendEmail = !empty($_POST['send_email']);
                     $emailReady = $sendEmail && isEmailConfigured($pdo);
                     $emailed = 0;
-                    $pdo->beginTransaction();
-                    try {
-                        $sql = "INSERT INTO notifications (sender_id, recipient_id, message) VALUES (?, ?, ?)";
-                        $ins = $pdo->prepare($sql);
-                        foreach ($recipients as $r) {
+                    $sent = 0;
+                    $dbError = '';
+                    $sql = "INSERT INTO notifications (sender_id, recipient_id, message) VALUES (?, ?, ?)";
+                    $ins = $pdo->prepare($sql);
+                    foreach ($recipients as $r) {
+                        try {
                             $ins->execute([$sender_id, $r['id']]);
+                            $sent++;
+                        } catch (Exception $e) {
+                            $dbError = $e->getMessage();
+                            error_log("Broadcast insert failed for recipient {$r['id']}: " . $dbError);
                         }
-                        $pdo->commit();
-                    } catch (Exception $e) {
-                        $pdo->rollBack();
-                        $_SESSION['message'] = "An error occurred while sending the broadcast.";
+                    }
+
+                    if ($sent === 0) {
+                        $_SESSION['message'] = "An error occurred while sending the broadcast."
+                            . ($dbError !== '' ? " Details: " . $dbError : "");
                         $_SESSION['message_type'] = "danger";
-                        error_log("Broadcast Error: " . $e->getMessage());
                         redirect("admin.php?tab=dashboard");
                     }
 
@@ -329,16 +334,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $subject = 'GradeView Broadcast';
                         foreach ($recipients as $r) {
                             if (empty($r['email']) || !filter_var($r['email'], FILTER_VALIDATE_EMAIL)) continue;
-                            $body = '<div style="font-family:Arial,sans-serif;font-size:14px;color:#1f2937">'
-                                . '<p>Hello ' . htmlspecialchars($r['first_name'] ?: 'User') . ',</p>'
-                                . '<p>' . nl2br(htmlspecialchars($message)) . '</p>'
-                                . '<p style="color:#6b7280;font-size:12px;margin-top:16px">This is a broadcast from your GradeView administrator.</p>'
-                                . '</div>';
-                            if (sendMail($r['email'], $subject, $body)) $emailed++;
+                            try {
+                                $body = '<div style="font-family:Arial,sans-serif;font-size:14px;color:#1f2937">'
+                                    . '<p>Hello ' . htmlspecialchars($r['first_name'] ?: 'User') . ',</p>'
+                                    . '<p>' . nl2br(htmlspecialchars($message)) . '</p>'
+                                    . '<p style="color:#6b7280;font-size:12px;margin-top:16px">This is a broadcast from your GradeView administrator.</p>'
+                                    . '</div>';
+                                if (sendMail($r['email'], $subject, $body)) $emailed++;
+                            } catch (Throwable $te) {
+                                error_log("Broadcast email failed for {$r['email']}: " . $te->getMessage());
+                            }
                         }
                     }
 
-                    $_SESSION['message'] = "Broadcast sent to " . count($recipients) . " recipients."
+                    $_SESSION['message'] = "Broadcast sent to " . $sent . " recipients."
                         . ($sendEmail ? ($emailReady ? " Email copies sent: {$emailed}." : " (Email not configured, so no email copies were sent.)") : "");
                     $_SESSION['message_type'] = "success";
                 } else {
