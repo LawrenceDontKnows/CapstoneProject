@@ -326,16 +326,28 @@
             if (broadcastModal) {
                 const textarea = broadcastModal.querySelector('#broadcastMessage');
 
-                broadcastModal.querySelectorAll('.admin-quick-message-btn').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        if (textarea) textarea.value = this.dataset.message;
-                    });
-                });
-
                 const datePickerInput = broadcastModal.querySelector('#broadcast_date_picker');
                 const timePickerInput = broadcastModal.querySelector('#broadcast_time_picker');
                 const insertDateBtn = broadcastModal.querySelector('#insert_date_btn');
                 const insertTimeBtn = broadcastModal.querySelector('#insert_time_btn');
+
+                // Auto-insert the selected date/time into [Date]/[Time] placeholders.
+                const applyDateTime = () => {
+                    if (!textarea) return;
+                    if (datePickerInput && datePickerInput.value) {
+                        textarea.value = textarea.value.replace(/\[Date\]/g, datePickerInput.value);
+                    }
+                    if (timePickerInput && timePickerInput.value) {
+                        textarea.value = textarea.value.replace(/\[Time\]/g, timePickerInput.value);
+                    }
+                };
+
+                broadcastModal.querySelectorAll('.admin-quick-message-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        if (textarea) textarea.value = this.dataset.message;
+                        applyDateTime();
+                    });
+                });
 
                 if (textarea && datePickerInput && timePickerInput && insertDateBtn && insertTimeBtn) {
                     flatpickr(datePickerInput, {
@@ -343,6 +355,9 @@
                         // theme: "airbnb", // Removed for a more compact default style
                         allowInput: true,
                         static: true, // Prevents modal from scrolling up on open
+                        onChange: function(selectedDates, dateStr) {
+                            if (dateStr) applyDateTime();
+                        },
                         onOpen: function(selectedDates, dateStr, instance) {
                             instance.calendarContainer.addEventListener('click', e => e.stopPropagation());
                         }
@@ -356,6 +371,9 @@
                         // theme: "airbnb", // Removed for a more compact default style
                         allowInput: true,
                         static: true, // Prevents modal from scrolling up on open
+                        onChange: function(selectedDates, dateStr) {
+                            if (dateStr) applyDateTime();
+                        },
                         onOpen: function(selectedDates, dateStr, instance) {
                             instance.calendarContainer.addEventListener('click', e => e.stopPropagation());
                         }
