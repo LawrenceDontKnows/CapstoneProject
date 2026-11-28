@@ -227,12 +227,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             object-fit: cover !important;
             border-radius: 50%;
             background: transparent;
-            position: relative;
-            z-index: 2;
-            will-change: transform;
             filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.55));
-            animation: logoFloat 3.6s ease-in-out infinite;
-            animation-fill-mode: both;
         }
         @keyframes logoFloat {
             0%, 100% { transform: translateY(0) scale(1); }
