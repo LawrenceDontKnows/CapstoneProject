@@ -255,10 +255,9 @@ $slideshowBgColor = '#f1f5f9';
         .login-card.glass { --l-text:#ffffff; --l-muted:rgba(255,255,255,0.85); --l-link:#ffffff; --l-icon:#ffffff; --l-placeholder:rgba(255,255,255,0.7); text-shadow: 0 0 3px rgba(0,0,0,0.9), 0 1px 2px rgba(0,0,0,0.9); }
         .login-card.glass.on-light-bg { --l-text:#1e293b; --l-muted:#475569; --l-link:#1e3a8a; --l-icon:#475569; --l-placeholder:#94a3b8; text-shadow: none; }
         .login-card.glass .logo h3,
-        .login-card.glass .form-label,
-        .login-card.glass .form-control { color: var(--l-text) !important; }
-        .login-card.glass .form-control::placeholder { color: var(--l-placeholder) !important; text-shadow: 0 0 3px rgba(0,0,0,0.9), 0 1px 2px rgba(0,0,0,0.9); }
-        .login-card.glass.on-light-bg .form-control::placeholder { text-shadow: none; }
+        .login-card.glass .form-label { color: var(--l-text) !important; }
+        .login-card.glass .form-control { color: #000000 !important; text-shadow: none !important; }
+        .login-card.glass .form-control::placeholder { color: #64748b !important; text-shadow: none !important; }
         .login-card.glass .input-group-text { color: var(--l-icon) !important; }
         .login-card.glass .footer-link .text-muted { color: var(--l-muted) !important; }
         .login-card.glass .footer-link a { color: var(--l-link) !important; }
