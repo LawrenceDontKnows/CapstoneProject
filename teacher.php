@@ -2089,13 +2089,13 @@ $students = $students_stmt->fetchAll();
                                             <?php else: ?>
                                                 <?php foreach ($sent_notifications as $notif): ?>
                                                     <tr class="align-middle">
-                                                        <td class="ps-4">
-                                                            <div class="d-flex align-items-center">
-                                                                <img src="<?php echo htmlspecialchars($notif['profile_picture'] ?: 'image/default.png'); ?>" class="rounded-circle me-2 avatar-sm" onerror="this.onerror=null;this.src='image/default.png';">
-                                                                <div class="fw-bold"><?php echo htmlspecialchars($notif['first_name'] . ' ' . $notif['last_name']); ?></div>
+                                                        <td class="ps-4" style="max-width:220px;">
+                                                            <div class="d-flex align-items-center text-nowrap">
+                                                                <img src="<?php echo htmlspecialchars($notif['profile_picture'] ?: 'image/default.png'); ?>" class="rounded-circle me-2 avatar-sm flex-shrink-0" onerror="this.onerror=null;this.src='image/default.png';">
+                                                                <div class="fw-bold text-truncate"><?php echo htmlspecialchars($notif['first_name'] . ' ' . $notif['last_name']); ?></div>
                                                             </div>
                                                         </td>
-                                                        <td><small><?php echo highlightNotificationKeywords($notif['message']); ?></small></td>
+                                                        <td style="min-width:200px; word-break:break-word;"><small><?php echo highlightNotificationKeywords($notif['message']); ?></small></td>
                                                         <td><small><?php echo date('M j, Y, g:i a', strtotime($notif['created_at'])); ?></small></td>
                                                         <td class="text-center">
                                                             <?php if ($notif['is_read']): ?>
