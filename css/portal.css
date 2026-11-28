@@ -151,12 +151,12 @@ input, select, textarea, button {
 .main-content {
     margin-left: var(--sidebar-width);
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    width: calc(100% - var(--sidebar-width));
+    width: auto;
 }
 
 .main-content.expanded {
     margin-left: 0;
-    width: 100%;
+    width: auto;
 }
 
 .sidebar-overlay {
@@ -982,7 +982,7 @@ input, select, textarea, button {
         overflow-x: hidden;
         -webkit-overflow-scrolling: touch;
     }
-    .main-content { margin-left: 0; width: 100%; }
+    .main-content { margin-left: 0; width: auto; }
     .sidebar-overlay.active { display: block; }
 
     /* Navbar mobile fixes */
