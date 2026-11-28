@@ -1508,12 +1508,18 @@ img, svg, video, canvas { max-width: 100%; height: auto; }
 .main-content .card-body,
 .main-content .list-group-item { overflow-wrap: anywhere; }
 
-/* 9.3 Consistent page gutters (phones -> desktop) */
-@media (max-width: 991px) {
-    .main-content > .px-4,
-    .main-content > .container-fluid {
-        padding-inline: clamp(12px, 4vw, 24px) !important;
-    }
+/* 9.3 Consistent page gutters (phones -> desktop)
+   Single symmetric gutter on .main-content; cancel Bootstrap row bleed
+   and the inner .px-4 so the right side is not extra wide. */
+.container-fluid > .row {
+    margin-left: 0;
+    margin-right: 0;
+}
+.main-content {
+    padding-inline: clamp(12px, 3vw, 24px);
+}
+.main-content > .px-4.py-4 {
+    padding-inline: 0 !important;
 }
 
 /* 9.4 Top bars: uniform height, safe-area, 44px touch targets */
@@ -1621,8 +1627,6 @@ img, svg, video, canvas { max-width: 100%; height: auto; }
 
 /* 9.11 Very small phones (<=360px) */
 @media (max-width: 360px) {
-    .main-content > .px-4,
-    .main-content > .container-fluid { padding-inline: 12px !important; }
     .table-responsive .table { min-width: 420px; }
     .table-responsive .table th,
     .table-responsive .table td { padding: 8px 9px; }
