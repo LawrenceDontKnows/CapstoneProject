@@ -202,6 +202,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
         /* Frosted glass window container */
         .reg-card {
+            position: relative;
             background:
                 linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.04) 45%, rgba(255, 255, 255, 0.02) 100%),
                 rgba(15, 20, 35, 0.58);
@@ -222,13 +223,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .header-box h2 { font-weight: 800; color: #ffffff; letter-spacing: -0.5px; }
         .header-box img {
             display: block;
-            margin: -112px auto 12px;
+            position: absolute;
+            top: -48px;
+            left: 50%;
+            transform: translateX(-50%);
+            margin: 0;
             width: 96px !important;
             height: 96px !important;
             object-fit: cover !important;
             border-radius: 50%;
             background: transparent;
-            position: relative;
             z-index: 2;
             filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.55));
         }
