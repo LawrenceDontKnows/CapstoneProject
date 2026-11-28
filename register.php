@@ -224,12 +224,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .header-box img {
             display: block;
             position: absolute;
-            top: -48px;
+            top: -56px;
             left: 50%;
             transform: translateX(-50%);
             margin: 0;
-            width: 96px !important;
-            height: 96px !important;
+            width: 112px !important;
+            height: 112px !important;
             object-fit: cover !important;
             border-radius: 50%;
             background: transparent;
@@ -326,7 +326,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         @media (max-width: 576px) {
             body { padding: 10px 0; }
-            .reg-card { padding: 18px; padding-top: 60px; margin: 10px; border-radius: 18px; }
+            .reg-card { padding: 18px; padding-top: 56px; margin: 56px 10px 10px; border-radius: 18px; }
+            .header-box img { width: 88px !important; height: 88px !important; top: -44px; }
             h3 { font-size: 0.95rem; }
             .header-box h2 { font-size: 1.5rem; }
         }
