@@ -215,7 +215,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             padding-top: 64px;
             width: 100%;
             max-width: 720px;
-            margin: 72px auto clamp(12px, 3vw, 32px);
+            margin: 80px auto clamp(12px, 3vw, 32px);
             color: #ffffff;
             color-scheme: dark;
         }
@@ -224,12 +224,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .header-box img {
             display: block;
             position: absolute;
-            top: -56px;
+            top: -64px;
             left: 50%;
             transform: translateX(-50%);
             margin: 0;
-            width: 112px !important;
-            height: 112px !important;
+            width: 128px !important;
+            height: 128px !important;
             object-fit: cover !important;
             border-radius: 50%;
             background: transparent;
@@ -327,7 +327,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         @media (max-width: 576px) {
             body { padding: 10px 0; }
             .reg-card { padding: 18px; padding-top: 56px; margin: 64px 10px 10px; border-radius: 18px; }
-            .header-box img { width: 88px !important; height: 88px !important; top: -44px; }
+            .header-box img { width: 96px !important; height: 96px !important; top: -48px; }
             h3 { font-size: 0.95rem; }
             .header-box h2 { font-size: 1.5rem; }
         }
