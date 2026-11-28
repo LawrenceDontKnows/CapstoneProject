@@ -1486,3 +1486,144 @@ img, video, canvas, svg {
     }
     footer small { overflow-wrap: anywhere; }
 }
+
+/* ==========================================================================
+   9. UNIVERSAL shared responsive layer (Admin / Teacher / Student / Auth)
+   Additive & low-specificity: safe for role-specific features and JS.
+   ========================================================================== */
+
+/* 9.1 Box model + viewport guardrails (global) */
+*, *::before, *::after { box-sizing: border-box; }
+html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+}
+img, svg, video, canvas { max-width: 100%; height: auto; }
+
+/* 9.2 Flex/grid children may shrink so long text never pushes off-screen */
+.main-content .row > *,
+.main-content .d-flex > * { min-width: 0; }
+.main-content .card-body,
+.main-content .list-group-item { overflow-wrap: anywhere; }
+
+/* 9.3 Consistent page gutters (phones -> desktop) */
+@media (max-width: 991px) {
+    .main-content > .px-4,
+    .main-content > .container-fluid {
+        padding-inline: clamp(12px, 4vw, 24px) !important;
+    }
+}
+
+/* 9.4 Top bars: uniform height, safe-area, 44px touch targets */
+@media (max-width: 991px) {
+    .main-content > .navbar {
+        min-height: 56px;
+        padding: 12px 16px !important;
+        padding-top: max(12px, env(safe-area-inset-top)) !important;
+        padding-left: max(16px, env(safe-area-inset-left)) !important;
+        padding-right: max(16px, env(safe-area-inset-right)) !important;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .main-content > .navbar .toggle-btn {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
+        margin: 0;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        line-height: 1;
+        border: 0;
+        background: transparent;
+        border-radius: 8px;
+        cursor: pointer;
+    }
+    .main-content > .navbar .navbar-brand {
+        max-width: calc(100vw - 96px);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+/* 9.5 Page headers with title + actions wrap instead of clipping */
+@media (max-width: 767px) {
+    .main-content .d-flex.justify-content-between {
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+    }
+    .main-content .d-flex.justify-content-between > * { max-width: 100%; }
+}
+
+/* 9.6 Cards: uniform padding + vertical rhythm */
+@media (max-width: 767px) {
+    .main-content .card { margin-bottom: 1rem; }
+    .main-content .card-body { padding: clamp(14px, 4vw, 20px); }
+}
+
+/* 9.7 Tables: every table scrolls inside its own container */
+.table-responsive {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+@media (max-width: 767px) {
+    .table-responsive .table { min-width: 480px; }
+    .table-responsive .table th,
+    .table-responsive .table td {
+        padding: 10px 12px;
+        vertical-align: middle;
+    }
+    .table-responsive .table thead th { white-space: nowrap; }
+    .table-responsive .table td { overflow-wrap: anywhere; }
+}
+
+/* 9.8 Forms, inputs, buttons: no right-edge clipping, touch-friendly */
+@media (max-width: 767px) {
+    .main-content .form-control,
+    .main-content .form-select,
+    .main-content textarea.form-control {
+        min-height: 42px;
+        max-width: 100%;
+        font-size: 0.95rem;
+    }
+    .main-content .btn { min-height: 42px; }
+    .main-content .input-group { flex-wrap: wrap; }
+}
+
+/* 9.9 Modals fit the viewport */
+@media (max-width: 575px) {
+    .modal-dialog {
+        max-width: calc(100vw - 24px);
+        margin: 12px auto;
+    }
+    .modal-content {
+        max-height: 90dvh;
+        overflow-y: auto;
+    }
+}
+
+/* 9.10 Mobile drawer uses dynamic viewport height + scroll lock */
+@media (max-width: 991px) {
+    .sidebar,
+    .sidebar > .d-flex.flex-column { height: 100dvh; }
+    body:has(.sidebar.active) { overflow: hidden; }
+}
+
+/* 9.11 Very small phones (<=360px) */
+@media (max-width: 360px) {
+    .main-content > .px-4,
+    .main-content > .container-fluid { padding-inline: 12px !important; }
+    .table-responsive .table { min-width: 420px; }
+    .table-responsive .table th,
+    .table-responsive .table td { padding: 8px 9px; }
+}

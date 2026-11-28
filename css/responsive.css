@@ -1,0 +1,42 @@
+/* ==========================================================================
+   responsive.css - shared, safe mobile guardrails for Auth / standalone pages
+   Loaded BEFORE page-specific <style> blocks so page rules win on conflicts.
+   Additive only: no layout is removed, only overflow/box-model protection.
+   ========================================================================== */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+img, svg, video, canvas {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Long content must wrap, not widen the page */
+body { overflow-wrap: break-word; }
+
+/* Form controls never exceed the viewport */
+.form-control,
+.form-select,
+textarea.form-control,
+input,
+select,
+textarea {
+    max-width: 100%;
+}
+
+/* Modals fit small screens */
+@media (max-width: 575px) {
+    .modal-dialog {
+        max-width: calc(100vw - 24px);
+        margin: 12px auto;
+    }
+    .modal-content {
+        max-height: 90dvh;
+        overflow-y: auto;
+    }
+}
