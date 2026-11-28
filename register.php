@@ -295,22 +295,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .form-select option { background-color: #14192b; color: #ffffff; }
         .btn-primary {
             width: 100%;
-            background: #ffffff;
+            background: linear-gradient(135deg, #6366f1, #22d3ee);
             border: none;
             padding: 14px 20px;
             min-height: 46px;
             font-weight: 700;
             border-radius: 12px;
-            color: #0f172a;
+            color: #ffffff;
             cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+            box-shadow: 0 10px 24px rgba(99, 102, 241, 0.45);
         }
         .btn-primary:hover {
             transform: translateY(-1px);
-            color: #0f172a;
-            background: #ffffff;
-            box-shadow: 0 14px 30px rgba(0, 0, 0, 0.45);
+            color: #ffffff;
+            background: linear-gradient(135deg, #6366f1, #22d3ee);
+            filter: brightness(1.05);
+            box-shadow: 0 14px 30px rgba(34, 211, 238, 0.5);
         }
         .btn-primary:disabled { filter: grayscale(0.4) brightness(0.9); box-shadow: none; }
         .is-invalid-custom { border: 2px solid #f87171 !important; background-color: rgba(248, 113, 113, 0.12) !important; }

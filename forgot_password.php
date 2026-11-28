@@ -248,14 +248,14 @@ if (!empty($_SESSION['otp_verified']) && $_SESSION['otp_verified_user_id'] == $u
         .form-text { color: #9ca3af !important; }
         .btn-primary {
             width: 100%;
-            background: #ffffff;
+            background: linear-gradient(135deg, #6366f1, #22d3ee);
             border: none;
-            color: #0f172a;
+            color: #ffffff;
             font-weight: 700;
             border-radius: 12px;
-            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+            box-shadow: 0 10px 24px rgba(99, 102, 241, 0.45);
         }
-        .btn-primary:hover, .btn-primary:focus { background: #ffffff; color: #0f172a; box-shadow: 0 14px 30px rgba(0, 0, 0, 0.45); }
+        .btn-primary:hover, .btn-primary:focus { background: linear-gradient(135deg, #6366f1, #22d3ee); color: #ffffff; box-shadow: 0 14px 30px rgba(34, 211, 238, 0.5); }
         .btn-outline-secondary {
             background: rgba(255, 255, 255, 0.08);
             border: 1px solid rgba(255, 255, 255, 0.18);

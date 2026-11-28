@@ -252,14 +252,14 @@ $slideshowBgColor = '#f1f5f9';
             min-height: 46px;
             border: 0;
             border-radius: 12px;
-            background: #ffffff;
-            color: #0f172a;
+            background: linear-gradient(135deg, #6366f1, #22d3ee);
+            color: #ffffff;
             font-weight: 700;
             letter-spacing: .02em;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+            box-shadow: 0 10px 24px rgba(99, 102, 241, 0.45);
         }
-        .btn-custom:hover { transform: translateY(-1px); color: #0f172a; background: #fff; box-shadow: 0 14px 30px rgba(0, 0, 0, 0.45); }
+        .btn-custom:hover { filter: brightness(1.05); transform: translateY(-1px); color: #fff; background: linear-gradient(135deg, #6366f1, #22d3ee); box-shadow: 0 14px 30px rgba(34, 211, 238, 0.5); }
         .footer-link a { color: #a5b4fc; font-weight: 600; text-decoration: none; transition: color 0.2s; }
         .footer-link a:hover { color: #ffffff; text-decoration: underline; }
         .footer-link .text-muted { color: rgba(255, 255, 255, 0.7) !important; }
