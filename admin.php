@@ -2308,7 +2308,7 @@ $subjects = $subjects_with_enrollments;
                                     <div class="accordion-item" id="subject-row-<?php echo $subject_id; ?>">
                                         <h2 class="accordion-header" id="admin-heading-<?php echo $subject_id; ?>">
                                             <button class="accordion-button <?php echo $idx > 1 ? 'collapsed' : ''; ?>" type="button" data-bs-toggle="collapse" data-bs-target="#admin-collapse-<?php echo $subject_id; ?>" aria-expanded="<?php echo $idx === 1 ? 'true' : 'false'; ?>" aria-controls="admin-collapse-<?php echo $subject_id; ?>">
-                                                <div class="d-flex w-100 justify-content-between align-items-center pe-4">
+                                                <div class="d-flex w-100 justify-content-between align-items-center pe-4 subject-accordion-head">
                                                     <span class="fw-bold"><?php echo htmlspecialchars($subject_data['subject_name']); ?> (<?php echo htmlspecialchars($subject_data['subject_code'] ?? 'N/A'); ?>)</span>
                                                     <span class="badge bg-secondary"><?php echo htmlspecialchars($subject_data['teacher_first'] ? $subject_data['teacher_first'] . ' ' . $subject_data['teacher_last'] : 'Unassigned'); ?></span>
                                                     <?php if ($subject_data['status'] === 'finalized'): ?>
@@ -2323,7 +2323,7 @@ $subjects = $subjects_with_enrollments;
                                         </h2>
                                         <div id="admin-collapse-<?php echo $subject_id; ?>" class="accordion-collapse collapse <?php echo $idx === 1 ? 'show' : ''; ?>" aria-labelledby="admin-heading-<?php echo $subject_id; ?>" data-bs-parent="#adminSubjectsAccordion">
                                             <div class="accordion-body">
-                                                <div class="d-flex justify-content-between align-items-center p-2 bg-light border-bottom mb-2">
+                                                <div class="d-flex justify-content-between align-items-center p-2 bg-light border-bottom mb-2 subject-actions-bar">
                                                     <div><small><strong>Restrictions:</strong> Course: <?php echo htmlspecialchars($subject_data['target_course'] ?? 'Any'); ?>, Year: <?php echo htmlspecialchars($subject_data['target_year_level'] ?? 'Any'); ?></small></div>
                                                     <div>
                                                         <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#enrollStudentsModal" data-subject-id="<?php echo htmlspecialchars($subject_id); ?>" data-subject-name="<?php echo htmlspecialchars($subject_data['subject_name'] ?? ''); ?>" title="Import enrollees from file"><i class="fas fa-file-import"></i> Import Enrollees</button>
