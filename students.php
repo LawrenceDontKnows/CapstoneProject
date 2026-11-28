@@ -462,7 +462,6 @@ foreach ($grades as $g) {
                 <div class="d-flex align-items-center">
                     <i class="fas fa-bars toggle-btn me-3" id="sidebarToggle"></i>
                     <span class="navbar-brand mb-0 h1">GradeView Portal</span>
-                    <span class="badge bg-danger text-white ms-3" style="font-size:.85rem">BUILD D · subject: <span id="buildSubject">all</span></span>
                 </div>
 
                 <div class="dropdown">

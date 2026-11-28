@@ -615,17 +615,31 @@ input, select, textarea, button {
 /* Notification dropdown responsive width */
 .notification-dropdown {
     width: 350px;
-    max-height: 400px;
-    overflow-y: auto;
+    max-height: none;
+    overflow: visible;
 }
-
+.notification-dropdown.show {
+    display: flex;
+    flex-direction: column;
+}
+.notification-dropdown #notification-list {
+    max-height: 320px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+.notification-dropdown > li:first-child,
+.notification-dropdown > li:last-child {
+    flex: 0 0 auto;
+}
 @media (max-width: 576px) {
     .notification-dropdown {
         width: calc(100vw - 2rem) !important;
         max-width: 320px;
-        max-height: 60vh;
         right: 0 !important;
         left: auto !important;
+    }
+    .notification-dropdown #notification-list {
+        max-height: 55vh;
     }
 }
 
@@ -1774,7 +1788,10 @@ img, svg, video, canvas { max-width: 100%; height: auto; }
     .main-content > .navbar .notification-dropdown {
         width: calc(100vw - 16px) !important;
         max-width: 360px;
-        max-height: 70vh;
+        max-height: none;
+    }
+    .main-content > .navbar .notification-dropdown #notification-list {
+        max-height: 60vh;
     }
 }
 

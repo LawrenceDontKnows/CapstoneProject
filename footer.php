@@ -414,6 +414,16 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
+        // Clicking any notification message opens the full notifications view.
+        document.querySelectorAll('.notification-item').forEach(function (item) {
+            item.addEventListener('click', function () {
+                setTimeout(function () {
+                    loadNotifications(1);
+                    allNotificationsModal.show();
+                }, 0);
+            });
+        });
+
         function loadNotifications(page) {
             modalBody.innerHTML = '<div class="text-center p-5"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i></div>';
             fetch(`notifications.php?ajax=1&page=${page}`)
