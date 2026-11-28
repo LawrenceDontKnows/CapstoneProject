@@ -199,23 +199,30 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
         /* Frosted glass window container */
         .reg-card {
-            background: rgba(20, 24, 38, 0.68);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.18);
+            background: rgba(20, 24, 38, 0.55);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid rgba(255, 255, 255, 0.22);
             border-radius: 24px;
-            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
-            padding: clamp(20px, 4vw, 40px);
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+            padding: 2.5rem;
             width: 100%;
-            max-width: 900px;
+            max-width: 720px;
             margin: clamp(12px, 3vw, 32px) auto;
-            color: #f8fafc;
+            color: #ffffff;
             color-scheme: dark;
         }
         .header-box { text-align: center; margin-bottom: 1.5rem; }
         .header-box h2 { font-weight: 800; color: #ffffff; letter-spacing: -0.5px; }
+        .header-box img {
+            width: 92px !important;
+            height: 92px !important;
+            object-fit: contain !important;
+            border-radius: 50%;
+            filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.45));
+        }
         .btn-back {
-            color: #e2e8f0;
+            color: #ffffff;
             text-decoration: none;
             font-weight: 600;
             display: inline-flex;
@@ -224,10 +231,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             padding: 8px 14px;
             border-radius: 999px;
             border: 1px solid rgba(255, 255, 255, 0.22);
-            background: rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             transition: background 0.2s ease, color 0.2s ease;
         }
-        .btn-back:hover { color: #ffffff; background: rgba(255, 255, 255, 0.18); }
+        .btn-back:hover { color: #ffffff; background: rgba(255, 255, 255, 0.2); }
         h3 {
             font-size: 1.05rem;
             font-weight: 700;
@@ -248,36 +257,36 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             border-radius: 10px;
             padding: 10px 12px;
             min-height: 44px;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            color: #f8fafc;
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            color: #ffffff;
             transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
         }
-        .form-control::placeholder { color: #94a3b8; }
+        .form-control::placeholder { color: rgba(255, 255, 255, 0.65); }
         .form-control:focus, .form-select:focus {
-            background: rgba(255, 255, 255, 0.12);
-            border-color: #22d3ee;
-            box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.35);
+            background: rgba(255, 255, 255, 0.18);
+            border-color: rgba(255, 255, 255, 0.65);
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.18);
             outline: none;
             color: #ffffff;
         }
-        .form-select option { color: #0f172a; }
+        .form-select option { background: #161a2a; color: #ffffff; }
         .btn-primary {
-            background: linear-gradient(135deg, #6366f1, #22d3ee);
+            background: #ffffff;
             border: none;
             padding: 12px;
             min-height: 46px;
-            font-weight: 700;
+            font-weight: 600;
             border-radius: 12px;
-            color: #0b1020;
-            transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
-            box-shadow: 0 12px 28px rgba(99, 102, 241, 0.45);
+            color: #111827;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
         }
         .btn-primary:hover {
-            filter: brightness(1.05);
             transform: translateY(-2px);
-            color: #0b1020;
-            box-shadow: 0 16px 34px rgba(34, 211, 238, 0.5);
+            color: #111827;
+            background: #ffffff;
+            box-shadow: 0 14px 30px rgba(0, 0, 0, 0.45);
         }
         .btn-primary:disabled { filter: grayscale(0.4) brightness(0.9); box-shadow: none; }
         .is-invalid-custom { border: 2px solid #f87171 !important; background-color: rgba(248, 113, 113, 0.12) !important; }
@@ -296,14 +305,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             .header-box h2 { font-size: 1.5rem; }
         }
         .input-group {
-            border: 1px solid rgba(255, 255, 255, 0.18);
+            border: 1px solid rgba(255, 255, 255, 0.22);
             border-radius: 10px;
-            background: rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.12);
             transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
         .input-group:focus-within {
-            border-color: #22d3ee;
-            box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.35);
+            border-color: rgba(255, 255, 255, 0.65);
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.18);
         }
         .input-group .form-control {
             border: none;
