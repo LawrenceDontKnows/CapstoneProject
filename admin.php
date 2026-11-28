@@ -1310,7 +1310,7 @@ $subjects = $subjects_with_enrollments;
                         <li class="nav-item">
                             <form action="logout.php" method="post" id="logoutForm" class="d-inline">
                                 <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
-                                <a class="nav-link" href="#" onclick="if(confirm('Are you sure you want to logout?')) document.getElementById('logoutForm').submit(); return false;">
+                                <a class="nav-link js-logout" href="#" role="button">
                                     <i class="fas fa-sign-out-alt me-2"></i>Logout
                                 </a>
                             </form>

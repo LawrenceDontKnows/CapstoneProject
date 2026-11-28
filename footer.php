@@ -219,6 +219,68 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
+<!-- Logout Confirmation Modal -->
+<div class="modal fade" id="logoutConfirmModal" tabindex="-1" aria-labelledby="logoutConfirmLabel" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content logout-confirm-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="logoutConfirmLabel"><i class="fas fa-sign-out-alt me-2"></i>Logout</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0">Are you sure you want to logout?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-logout-cancel" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-logout-confirm" id="logoutConfirmBtn"><i class="fas fa-sign-out-alt me-1"></i>Logout</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    body.logout-modal-open .modal-backdrop.show {
+        opacity: 1;
+        background: rgba(10, 12, 16, 0.55);
+        backdrop-filter: blur(8px) saturate(120%);
+        -webkit-backdrop-filter: blur(8px) saturate(120%);
+    }
+    #logoutConfirmModal .logout-confirm-content {
+        background: rgba(26, 28, 32, 0.72);
+        backdrop-filter: blur(24px) saturate(125%);
+        -webkit-backdrop-filter: blur(24px) saturate(125%);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 18px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 30px 70px rgba(0, 0, 0, 0.65);
+        color: #f5f5f4;
+    }
+    #logoutConfirmModal .modal-header,
+    #logoutConfirmModal .modal-footer {
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+    #logoutConfirmModal .modal-title { color: #f5f5f4; font-weight: 700; }
+    #logoutConfirmModal .modal-body { color: #d1d5db; }
+    #logoutConfirmModal .btn-logout-cancel {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        color: #f5f5f4;
+    }
+    #logoutConfirmModal .btn-logout-cancel:hover {
+        background: rgba(255, 255, 255, 0.18);
+        color: #ffffff;
+    }
+    #logoutConfirmModal .btn-logout-confirm {
+        background: linear-gradient(135deg, #ef4444, #f97316);
+        border: none;
+        color: #ffffff;
+        font-weight: 700;
+    }
+    #logoutConfirmModal .btn-logout-confirm:hover {
+        filter: brightness(1.05);
+        color: #ffffff;
+    }
+</style>
+
 <!-- Image Cropper Modal -->
 <div class="modal fade" id="cropperModal" tabindex="-1" aria-labelledby="cropperModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -331,6 +393,40 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .catch(() => modalBody.innerHTML = '<div class="alert alert-danger">Failed to load notifications.</div>');
         }
+    }
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var logoutModalEl = document.getElementById('logoutConfirmModal');
+    if (!logoutModalEl || typeof bootstrap === 'undefined') return;
+    var logoutModal = new bootstrap.Modal(logoutModalEl);
+    var pendingLogoutEl = null;
+
+    logoutModalEl.addEventListener('show.bs.modal', function () {
+        document.body.classList.add('logout-modal-open');
+    });
+    logoutModalEl.addEventListener('hidden.bs.modal', function () {
+        document.body.classList.remove('logout-modal-open');
+    });
+
+    document.querySelectorAll('.js-logout').forEach(function (el) {
+        el.addEventListener('click', function (e) {
+            e.preventDefault();
+            pendingLogoutEl = el;
+            logoutModal.show();
+        });
+    });
+
+    var logoutConfirmBtn = document.getElementById('logoutConfirmBtn');
+    if (logoutConfirmBtn) {
+        logoutConfirmBtn.addEventListener('click', function () {
+            var form = document.getElementById('logoutForm');
+            if (form) { form.submit(); return; }
+            var href = pendingLogoutEl && pendingLogoutEl.getAttribute('href');
+            window.location.href = (href && href !== '#') ? href : 'logout.php';
+        });
     }
 });
 </script>

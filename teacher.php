@@ -1425,7 +1425,7 @@ $students = $students_stmt->fetchAll();
                         <a class="nav-link <?php echo $active_tab === 'profile' ? 'active' : ''; ?>" href="teacher.php?tab=profile"><i class="fas fa-user-edit me-2"></i>My Profile</a>
                     </li>
                     <li class="nav-item mt-auto">
-                        <a id="logoutBtn" class="nav-link text-warning" href="logout.php">
+                        <a id="logoutBtn" class="nav-link text-warning js-logout" href="logout.php">
                             <i class="fas fa-sign-out-alt me-2"></i>Logout
                         </a>
                     </li>
@@ -2720,13 +2720,7 @@ $students = $students_stmt->fetchAll();
 
                     // Auto-close on mobile when a link is clicked
                     sidebar.querySelectorAll('.nav-link:not(.dropdown-toggle)').forEach(link => {
-                        link.addEventListener('click', (e) => {
-                            if (link.id === 'logoutBtn') {
-                                if (!confirm('Are you sure you want to logout?')) {
-                                    e.preventDefault();
-                                    return;
-                                }
-                            }
+                        link.addEventListener('click', () => {
                             if (window.innerWidth <= 768 && sidebar.classList.contains('active')) {
                                 toggleSidebar();
                             }

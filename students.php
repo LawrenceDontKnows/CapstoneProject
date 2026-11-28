@@ -448,7 +448,7 @@ foreach ($grades as $g) {
                             <a class="nav-link <?php echo $active_tab === 'profile' ? 'active' : ''; ?>" href="students.php?tab=profile"><i class="fas fa-user-edit me-2"></i>My Profile</a>
                         </li>
                         <li class="nav-item mt-auto">
-                            <a class="nav-link text-warning" href="logout.php" onclick="return confirm('Are you sure you want to logout?')">
+                            <a class="nav-link text-warning js-logout" href="logout.php">
                                 <i class="fas fa-sign-out-alt me-2"></i>Logout
                             </a>
                         </li>
