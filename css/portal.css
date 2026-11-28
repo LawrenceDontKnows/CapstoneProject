@@ -1688,3 +1688,45 @@ img, svg, video, canvas { max-width: 100%; height: auto; }
 @media (max-width: 767px) {
     .user-actions .btn { min-width: 44px; min-height: 44px; }
 }
+
+/* ==========================================================================
+   11. Flatpickr calendar alignment (7-column grid, responsive)
+   ========================================================================== */
+.flatpickr-calendar {
+    box-sizing: border-box;
+    max-width: calc(100vw - 24px);
+}
+.flatpickr-innerContainer,
+.flatpickr-rContainer { max-width: 100%; }
+.flatpickr-days { width: 100% !important; }
+.flatpickr-weekdays {
+    display: flex !important;
+    width: 100%;
+}
+.flatpickr-weekday {
+    flex: 1 1 calc(100% / 7) !important;
+    text-align: center;
+}
+.dayContainer {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    width: 100% !important;
+    min-width: 0 !important;
+}
+.flatpickr-day {
+    flex: 1 1 calc(100% / 7) !important;
+    max-width: none !important;
+    width: auto !important;
+    height: auto !important;
+    aspect-ratio: 1 / 1;
+    line-height: normal !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+}
+.flatpickr-current-month {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
