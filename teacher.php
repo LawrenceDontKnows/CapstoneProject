@@ -1233,6 +1233,12 @@ $students = $students_stmt->fetchAll();
             .students-table .student-meta .name { white-space: normal; word-break: break-word; }
             .students-table .student-meta { min-width: 0; }
         }
+        /* Phones: keep wide tables readable via horizontal scroll instead of
+           compressing/overlapping columns (dashboard list, history, ledgers). */
+        @media (max-width: 767.98px) {
+            .table-responsive > .table { min-width: 640px; }
+            .table-responsive > .table .text-nowrap { white-space: normal !important; }
+        }
         .students-filter-card .search-input-wrap .form-control {
             padding-right: 2.1rem;
         }
