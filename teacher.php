@@ -419,6 +419,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['notify_class'])) {
                 $pdo->commit();
                 $_SESSION['message'] = "Notification sent to all " . count($student_ids) . " students in the class.";
                 $_SESSION['message_type'] = "success";
+            } else {
+                $_SESSION['message'] = "No students are enrolled in this subject yet, so the broadcast was not sent.";
+                $_SESSION['message_type'] = "warning";
             }
         }
     }

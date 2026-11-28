@@ -2539,7 +2539,7 @@ $subjects = $subjects_with_enrollments;
                             <div>
                                 <?php foreach ($broadcast_templates as $template):
                                     if ($template['role_access'] === 'admin' || $template['role_access'] === 'all'): ?>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary mb-1" onclick="setBroadcastMessage('<?php echo htmlspecialchars($template['message'], ENT_QUOTES); ?>')"><?php echo htmlspecialchars($template['title']); ?></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary mb-1 admin-quick-message-btn" data-message="<?php echo htmlspecialchars($template['message'], ENT_QUOTES); ?>"><?php echo htmlspecialchars($template['title']); ?></button>
                                     <?php endif; ?>
                                 <?php endforeach; ?>
                             </div>

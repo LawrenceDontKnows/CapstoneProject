@@ -325,6 +325,13 @@
             const broadcastModal = document.getElementById('broadcastNotificationModal');
             if (broadcastModal) {
                 const textarea = broadcastModal.querySelector('#broadcastMessage');
+
+                broadcastModal.querySelectorAll('.admin-quick-message-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        if (textarea) textarea.value = this.dataset.message;
+                    });
+                });
+
                 const datePickerInput = broadcastModal.querySelector('#broadcast_date_picker');
                 const timePickerInput = broadcastModal.querySelector('#broadcast_time_picker');
                 const insertDateBtn = broadcastModal.querySelector('#insert_date_btn');
