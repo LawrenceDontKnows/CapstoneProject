@@ -332,19 +332,30 @@
                 const insertTimeBtn = broadcastModal.querySelector('#insert_time_btn');
 
                 // Auto-insert the selected date/time into [Date]/[Time] placeholders.
+                // Re-selecting a new date/time updates the previously inserted value in place.
+                let lastDate = '';
+                let lastTime = '';
                 const applyDateTime = () => {
                     if (!textarea) return;
-                    if (datePickerInput && datePickerInput.value) {
-                        textarea.value = textarea.value.replace(/\[Date\]/g, datePickerInput.value);
+                    const d = datePickerInput ? datePickerInput.value : '';
+                    const t = timePickerInput ? timePickerInput.value : '';
+                    if (lastDate && d && lastDate !== d) {
+                        textarea.value = textarea.value.split(lastDate).join(d);
                     }
-                    if (timePickerInput && timePickerInput.value) {
-                        textarea.value = textarea.value.replace(/\[Time\]/g, timePickerInput.value);
+                    if (lastTime && t && lastTime !== t) {
+                        textarea.value = textarea.value.split(lastTime).join(t);
                     }
+                    if (d) textarea.value = textarea.value.replace(/\[Date\]/g, d);
+                    if (t) textarea.value = textarea.value.replace(/\[Time\]/g, t);
+                    lastDate = d;
+                    lastTime = t;
                 };
 
                 broadcastModal.querySelectorAll('.admin-quick-message-btn').forEach(btn => {
                     btn.addEventListener('click', function() {
                         if (textarea) textarea.value = this.dataset.message;
+                        lastDate = '';
+                        lastTime = '';
                         applyDateTime();
                     });
                 });
