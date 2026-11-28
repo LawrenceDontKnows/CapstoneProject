@@ -736,9 +736,11 @@ foreach ($grades as $g) {
                                                     <td class="text-center">
                                                         <span class="badge bg-<?php echo $status_color; ?>"><?php echo $status_text; ?></span>
                                                     </td>
-                                                <td class="d-flex align-items-center">
-                                                    <img src="<?php echo htmlspecialchars($grade['teacher_picture'] ?: 'image/default.png'); ?>" class="rounded-circle me-2 avatar-sm" onerror="this.onerror=null;this.src='image/default.png';">
-                                                    <?php echo htmlspecialchars($grade['teacher_first'] . ' ' . $grade['teacher_last']); ?>
+                                                <td class="align-middle" style="white-space:nowrap;">
+                                                    <div class="d-flex align-items-center">
+                                                        <img src="<?php echo htmlspecialchars($grade['teacher_picture'] ?: 'image/default.png'); ?>" class="rounded-circle me-2 avatar-sm" onerror="this.onerror=null;this.src='image/default.png';">
+                                                        <span><?php echo htmlspecialchars($grade['teacher_first'] . ' ' . $grade['teacher_last']); ?></span>
+                                                    </div>
                                                 </td>
                                                     <td><?php echo htmlspecialchars($grade['remarks'] ?? ''); ?></td>
                                                     <td><?php echo date('M j, Y', strtotime($grade['graded_at'])); ?></td>
