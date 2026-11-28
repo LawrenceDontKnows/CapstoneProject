@@ -212,13 +212,15 @@ $slideshowBgColor = '#f1f5f9';
             width: 100%;
             max-width: 440px;
             justify-self: end;
-            background: rgba(20, 24, 38, 0.55);
-            backdrop-filter: blur(18px);
-            -webkit-backdrop-filter: blur(18px);
-            border: 1px solid rgba(255, 255, 255, 0.22);
+            background:
+                linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.04) 45%, rgba(255, 255, 255, 0.02) 100%),
+                rgba(20, 24, 38, 0.45);
+            backdrop-filter: blur(22px) saturate(140%);
+            -webkit-backdrop-filter: blur(22px) saturate(140%);
+            border: 1px solid rgba(255, 255, 255, 0.28);
             border-radius: 24px;
             padding: 2.5rem;
-            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35);
             color: #ffffff;
             color-scheme: dark;
         }
@@ -229,6 +231,8 @@ $slideshowBgColor = '#f1f5f9';
             border: 1px solid rgba(255, 255, 255, 0.22);
             border-radius: 10px;
             background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
             transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
         .input-group:focus-within {
