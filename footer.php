@@ -492,3 +492,32 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 </script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Open in Excel: use the desktop sync helper when it is reachable,
+    // otherwise fall back to opening the workbook directly (no local setup).
+    document.querySelectorAll('.js-open-grade').forEach(function (el) {
+        el.addEventListener('click', function (e) {
+            e.preventDefault();
+            var helperUrl = el.getAttribute('data-helper');
+            var fileUrl = el.getAttribute('data-file');
+            var done = false;
+            function go(url) {
+                if (done || !url) return;
+                done = true;
+                window.location.href = url;
+            }
+            try {
+                var ctrl = new AbortController();
+                var timer = setTimeout(function () { ctrl.abort(); }, 1200);
+                fetch('http://127.0.0.1:8765/ping', { mode: 'no-cors', signal: ctrl.signal })
+                    .then(function () { clearTimeout(timer); go(helperUrl); })
+                    .catch(function () { clearTimeout(timer); go(fileUrl); });
+            } catch (err) {
+                go(fileUrl);
+            }
+        });
+    });
+});
+</script>

@@ -1920,7 +1920,7 @@ $students = $students_stmt->fetchAll();
                             <div>
                                 <h4 class="fw-bold mb-1"><i class="fas fa-edit me-2 text-primary"></i>Manage Grade</h4>
                                 <p class="text-muted small mb-0">Import an Excel grade file, then use <strong>Open</strong> to edit it in Excel with the desktop sync helper (auto-uploads on Ctrl+S), <strong>View</strong> for a read-only preview, <strong>Download</strong> for a copy, and <strong>Compute</strong> to calculate grades from the latest server copy.</p>
-                                <p class="text-muted small mb-0 mt-1"><i class="fas fa-circle-info me-1"></i>Desktop sync needs the helper running on your PC. Start it with <code>desktop_helper\start_helper.bat</code> (keep it in the tray), then click <strong>Open</strong> — it pairs automatically, no token setup required.</p>
+                                <p class="text-muted small mb-0 mt-1"><i class="fas fa-circle-info me-1"></i><strong>Open</strong> uses the desktop sync helper when it is running (auto-sync on save). If it is not running, the file opens directly in Excel instead — no setup or refused connection.</p>
                             </div>
                         </div>
 
@@ -2018,14 +2018,15 @@ $students = $students_stmt->fetchAll();
                                                             <button type="button" class="btn btn-sm btn-outline-success js-view-grade" data-stored="<?php echo htmlspecialchars($gf['stored'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" data-name="<?php echo htmlspecialchars($gf['original_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" title="View / edit grade sheet and save"><i class="fas fa-eye me-1"></i>View</button>
                                                             <?php
                                                             $fileUrl = $scheme . '://' . $host . $encodedBase . '/uploads/grade_imports/' . rawurlencode($gf['stored'] ?? '');
-                                                            // Open launches the desktop sync helper (local agent), which downloads
-                                                            // a writable copy, opens it in Excel, and auto-uploads on save. The helper
-                                                            // reads its own device token from gradeview_helper.json.
+                                                            $excelUrl = 'ms-excel:ofe|u|' . $fileUrl;
+                                                            // Open uses the desktop sync helper when it is reachable
+                                                            // (auto-pairs, auto-uploads on save); otherwise it opens
+                                                            // the workbook directly in Excel with no local setup.
                                                             $helperPort = 8765;
                                                             $helperUrl = 'http://127.0.0.1:' . $helperPort . '/open?stored=' . rawurlencode($gf['stored'] ?? '') . '&name=' . rawurlencode($gf['original_name'] ?? ($gf['stored'] ?? 'grade.xlsx'))
                                                                 . ($desktopToken !== '' ? '&token=' . rawurlencode($desktopToken) . '&server=' . rawurlencode($helperServer) : '');
                                                             ?>
-                                                            <a href="<?php echo htmlspecialchars($helperUrl, ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-sm btn-outline-info" title="Open in Excel via the desktop sync helper (auto-syncs on save)"><i class="fas fa-external-link-alt me-1"></i>Open</a>
+                                                            <button type="button" class="btn btn-sm btn-outline-info js-open-grade" data-helper="<?php echo htmlspecialchars($helperUrl, ENT_QUOTES, 'UTF-8'); ?>" data-file="<?php echo htmlspecialchars($excelUrl, ENT_QUOTES, 'UTF-8'); ?>" title="Open in Excel (uses the desktop sync helper if running, otherwise opens directly)"><i class="fas fa-external-link-alt me-1"></i>Open</button>
                                                             <a href="<?php echo htmlspecialchars($fileUrl, ENT_QUOTES, 'UTF-8'); ?>" download="<?php echo htmlspecialchars($gf['original_name'] ?? 'grades.xlsx', ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-sm btn-outline-primary" title="Download a writable copy, edit it in Excel, save, then import the updated file"><i class="fas fa-download me-1"></i>Download</a>
                                                             <?php if ((int)($gf['subject_id'] ?? 0) > 0): ?>
                                                             <form method="POST" class="d-inline m-0">
