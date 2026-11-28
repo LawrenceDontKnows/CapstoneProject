@@ -1,6 +1,7 @@
 <?php
 include 'includes/conn.php';
 include 'includes/functions.php';
+include 'includes/mailer.php';
 requireRole('teacher');
 validateSession(); 
 
@@ -387,9 +388,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_notification']))
         } else {
             try {
                 // Add a check to ensure the recipient exists before sending.
-                $check_student = $pdo->prepare("SELECT id FROM users WHERE id = ? AND role = 'student' AND status = 'active'");
+                $check_student = $pdo->prepare("SELECT id, email, first_name FROM users WHERE id = ? AND role = 'student' AND status = 'active'");
                 $check_student->execute([$recipient_id]);
-                if ($check_student->fetchColumn() === false) {
+                $student = $check_student->fetch(PDO::FETCH_ASSOC);
+                if (!$student) {
                     // This is the most likely cause of the foreign key error.
                     $_SESSION['message'] = "Error: The target student does not exist or is inactive. Notification not sent.";
                     $_SESSION['message_type'] = "danger";
@@ -397,7 +399,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_notification']))
                     $sql = "INSERT INTO notifications (sender_id, recipient_id, message) VALUES (?, ?, ?)";
                     $stmt = $pdo->prepare($sql);
                     $stmt->execute([$sender_id, $recipient_id, $message]);
-                    $_SESSION['message'] = "Notification sent successfully.";
+
+                    $emailNote = '';
+                    if (!empty($_POST['send_email'])) {
+                        if (isEmailConfigured($pdo) && filter_var($student['email'] ?? '', FILTER_VALIDATE_EMAIL)) {
+                            $body = '<div style="font-family:Arial,sans-serif;font-size:14px;color:#1f2937">'
+                                . '<p>Hello ' . htmlspecialchars($student['first_name'] ?: 'Student') . ',</p>'
+                                . '<p>' . nl2br(htmlspecialchars($message)) . '</p>'
+                                . '<p style="color:#6b7280;font-size:12px;margin-top:16px">Sent by your teacher via GradeView.</p>'
+                                . '</div>';
+                            $emailNote = sendMail($student['email'], 'GradeView Notification', $body) ? ' Email copy sent.' : ' (Email could not be sent.)';
+                        } else {
+                            $emailNote = ' (Email not configured or recipient has no valid email.)';
+                        }
+                    }
+                    $_SESSION['message'] = "Notification sent successfully." . $emailNote;
                     $_SESSION['message_type'] = "success";
                 }
             } catch (PDOException $e) {
@@ -430,19 +446,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['notify_class'])) {
             $_SESSION['message'] = "Message and subject are required.";
             $_SESSION['message_type'] = "warning";
         } else {
-            $students_stmt = $pdo->prepare("SELECT student_id FROM grades WHERE subject_id = ? AND teacher_id = ?");
+            $students_stmt = $pdo->prepare("SELECT student_id, email, first_name FROM grades g JOIN users u ON g.student_id = u.id WHERE g.subject_id = ? AND g.teacher_id = ?");
             $students_stmt->execute([$subject_id, $sender_id]);
-            $student_ids = $students_stmt->fetchAll(PDO::FETCH_COLUMN);
+            $students = $students_stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            if (!empty($student_ids)) {
+            if (!empty($students)) {
+                $sendEmail = !empty($_POST['send_email']);
+                $emailReady = $sendEmail && isEmailConfigured($pdo);
+                $emailed = 0;
                 $pdo->beginTransaction();
-                $sql = "INSERT INTO notifications (sender_id, recipient_id, message) VALUES (?, ?, ?)";
-                $stmt = $pdo->prepare($sql);
-                foreach ($student_ids as $student_id) {
-                    $stmt->execute([$sender_id, $student_id, $message]);
+                try {
+                    $sql = "INSERT INTO notifications (sender_id, recipient_id, message) VALUES (?, ?, ?)";
+                    $stmt = $pdo->prepare($sql);
+                    foreach ($students as $s) {
+                        $stmt->execute([$sender_id, $s['student_id']]);
+                    }
+                    $pdo->commit();
+                } catch (PDOException $e) {
+                    $pdo->rollBack();
+                    $_SESSION['message'] = "Database Error: Could not send the class broadcast.";
+                    $_SESSION['message_type'] = "danger";
+                    error_log("Notify Class Error: " . $e->getMessage());
+                    header("Location: teacher.php?tab=dashboard");
+                    exit;
                 }
-                $pdo->commit();
-                $_SESSION['message'] = "Notification sent to all " . count($student_ids) . " students in the class.";
+
+                if ($emailReady) {
+                    foreach ($students as $s) {
+                        if (empty($s['email']) || !filter_var($s['email'], FILTER_VALIDATE_EMAIL)) continue;
+                        $body = '<div style="font-family:Arial,sans-serif;font-size:14px;color:#1f2937">'
+                            . '<p>Hello ' . htmlspecialchars($s['first_name'] ?: 'Student') . ',</p>'
+                            . '<p>' . nl2br(htmlspecialchars($message)) . '</p>'
+                            . '<p style="color:#6b7280;font-size:12px;margin-top:16px">Sent by your teacher via GradeView.</p>'
+                            . '</div>';
+                        if (sendMail($s['email'], 'GradeView Class Broadcast', $body)) $emailed++;
+                    }
+                }
+
+                $_SESSION['message'] = "Notification sent to all " . count($students) . " students in the class."
+                    . ($sendEmail ? ($emailReady ? " Email copies sent: {$emailed}." : " (Email not configured, so no email copies were sent.)") : "");
                 $_SESSION['message_type'] = "success";
             } else {
                 $_SESSION['message'] = "No students are enrolled in this subject yet, so the broadcast was not sent.";
@@ -2177,6 +2219,10 @@ $students = $students_stmt->fetchAll();
                     <input type="hidden" name="subject_id" id="notify_class_subject_id">
                     <div class="modal-body">
                         <p>You are sending a broadcast to all students in <strong id="notify_class_subject_name"></strong>.</p>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="send_email" value="1" checked>
+                            <label class="form-check-label small">Also send a copy via email to each student</label>
+                        </div>
                         <div class="mb-2">
                             <label class="form-label small">Quick Messages</label>
                             <div>
@@ -2224,6 +2270,10 @@ $students = $students_stmt->fetchAll();
                     <input type="hidden" name="active_tab_context" value="<?php echo htmlspecialchars($active_tab); ?>">
                     <div class="modal-body">
                         <p>You are sending a notification to <strong id="notification_recipient_name"></strong>.</p>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="send_email" value="1" checked>
+                            <label class="form-check-label small">Also send a copy via email to this student</label>
+                        </div>
                         <div class="mb-2">
                             <label class="form-label small">Quick Messages</label>
                             <div>

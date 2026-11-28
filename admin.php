@@ -299,29 +299,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 // Create placeholders for the IN clause
                 $placeholders = implode(',', array_fill(0, count($roles_to_query), '?'));
-                $query = "SELECT id FROM users WHERE role IN ($placeholders) AND status = 'active'";
+                $query = "SELECT id, email, first_name FROM users WHERE role IN ($placeholders) AND status = 'active'";
                 
                 $stmt = $pdo->prepare($query);
                 $stmt->execute($roles_to_query);
-                $recipient_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+                $recipients = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-                if (!empty($recipient_ids)) {
+                if (!empty($recipients)) {
+                    $sendEmail = !empty($_POST['send_email']);
+                    $emailReady = $sendEmail && isEmailConfigured($pdo);
+                    $emailed = 0;
                     $pdo->beginTransaction();
                     try {
                         $sql = "INSERT INTO notifications (sender_id, recipient_id, message) VALUES (?, ?, ?)";
-                        $stmt = $pdo->prepare($sql);
-                        foreach ($recipient_ids as $recipient_id) {
-                            $stmt->execute([$sender_id, $recipient_id, $message]);
+                        $ins = $pdo->prepare($sql);
+                        foreach ($recipients as $r) {
+                            $ins->execute([$sender_id, $r['id']]);
                         }
                         $pdo->commit();
-                        $_SESSION['message'] = "Broadcast sent to " . count($recipient_ids) . " recipients.";
-                        $_SESSION['message_type'] = "success";
                     } catch (Exception $e) {
                         $pdo->rollBack();
                         $_SESSION['message'] = "An error occurred while sending the broadcast.";
                         $_SESSION['message_type'] = "danger";
                         error_log("Broadcast Error: " . $e->getMessage());
+                        redirect("admin.php?tab=dashboard");
                     }
+
+                    if ($emailReady) {
+                        $subject = 'GradeView Broadcast';
+                        foreach ($recipients as $r) {
+                            if (empty($r['email']) || !filter_var($r['email'], FILTER_VALIDATE_EMAIL)) continue;
+                            $body = '<div style="font-family:Arial,sans-serif;font-size:14px;color:#1f2937">'
+                                . '<p>Hello ' . htmlspecialchars($r['first_name'] ?: 'User') . ',</p>'
+                                . '<p>' . nl2br(htmlspecialchars($message)) . '</p>'
+                                . '<p style="color:#6b7280;font-size:12px;margin-top:16px">This is a broadcast from your GradeView administrator.</p>'
+                                . '</div>';
+                            if (sendMail($r['email'], $subject, $body)) $emailed++;
+                        }
+                    }
+
+                    $_SESSION['message'] = "Broadcast sent to " . count($recipients) . " recipients."
+                        . ($sendEmail ? ($emailReady ? " Email copies sent: {$emailed}." : " (Email not configured, so no email copies were sent.)") : "");
+                    $_SESSION['message_type'] = "success";
                 } else {
                     $_SESSION['message'] = "No active recipients found for the selected group(s).";
                     $_SESSION['message_type'] = "info";
@@ -2559,6 +2578,10 @@ $subjects = $subjects_with_enrollments;
                                 </div>
                             </div>
                             <div class="form-text">Select one or more groups to receive the broadcast.</div>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" name="send_email" value="1" id="broadcastSendEmail" checked>
+                            <label class="form-check-label" for="broadcastSendEmail">Also send a copy via email to each recipient</label>
                         </div>
                         <div class="mb-2">
                             <label class="form-label small">Quick Messages</label>
