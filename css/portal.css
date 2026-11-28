@@ -1730,3 +1730,50 @@ img, svg, video, canvas { max-width: 100%; height: auto; }
     justify-content: center;
     gap: 4px;
 }
+
+/* ==========================================================================
+   12. Dashboard header: keep bell/dropdown inline and visible on mobile
+   ========================================================================== */
+.main-content > .navbar {
+    flex-wrap: nowrap !important;
+    align-items: center;
+}
+.main-content > .navbar > .d-flex {
+    flex: 1 1 auto;
+    min-width: 0;
+    align-items: center;
+}
+.main-content > .navbar .navbar-brand {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100% !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.main-content > .navbar .dropdown {
+    flex: 0 0 auto;
+    margin-left: auto;
+}
+.main-content > .navbar .dropdown > a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+}
+.main-content > .navbar .notification-dropdown {
+    right: 0 !important;
+    left: auto !important;
+    z-index: 1055;
+}
+@media (max-width: 991px) {
+    .main-content > .navbar .navbar-brand {
+        max-width: 100% !important;
+    }
+    .main-content > .navbar .notification-dropdown {
+        width: calc(100vw - 16px) !important;
+        max-width: 360px;
+        max-height: 70vh;
+    }
+}
