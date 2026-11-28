@@ -190,12 +190,81 @@ if (!empty($_SESSION['otp_verified']) && $_SESSION['otp_verified_user_id'] == $u
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="css/responsive.css" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
+        body {
+            font-family: 'Inter', sans-serif;
+            color: #f5f5f4;
+            background-color: #121417;
+            min-height: 100vh;
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -3;
+            background:
+                radial-gradient(38% 38% at 18% 22%, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.06) 40%, transparent 70%),
+                radial-gradient(30% 30% at 82% 30%, rgba(156, 163, 175, 0.45) 0%, transparent 70%),
+                radial-gradient(45% 45% at 78% 82%, rgba(255, 255, 255, 0.18) 0%, transparent 70%),
+                radial-gradient(40% 40% at 22% 80%, rgba(113, 113, 122, 0.4) 0%, transparent 70%),
+                linear-gradient(135deg, #121417 0%, #1f2227 100%);
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
         .login-container { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
-        .login-card { background: #ffffff; border-radius: 1rem; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); padding: 2.5rem; width: 100%; max-width: 420px; border: none; }
+        .login-card {
+            background: rgba(26, 28, 32, 0.52);
+            backdrop-filter: blur(24px) saturate(125%);
+            -webkit-backdrop-filter: blur(24px) saturate(125%);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 18px;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 30px 70px rgba(0, 0, 0, 0.65);
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 460px;
+            color: #f5f5f4;
+            color-scheme: dark;
+        }
         .logo { text-align: center; margin-bottom: 2rem; }
-        .logo img { width: 80px; height: 80px; object-fit: cover; border-radius: 50%; margin-bottom: 1rem; }
-        .logo h3 { color: #1e293b; font-weight: 800; }
+        .logo img { width: 80px; height: 80px; object-fit: cover; border-radius: 50%; margin-bottom: 1rem; filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.55)); }
+        .logo h3 { color: #f5f5f4; font-weight: 800; }
+        .logo .text-muted { color: #9ca3af !important; }
+        .form-label { color: #9ca3af; font-weight: 600; }
+        .form-control {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            color: #ffffff;
+            border-radius: 10px;
+            color-scheme: dark;
+        }
+        .form-control:focus {
+            background: rgba(255, 255, 255, 0.18);
+            border-color: rgba(255, 255, 255, 0.7);
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+        }
+        .form-control::placeholder { color: rgba(255, 255, 255, 0.65); }
+        .form-control[readonly] { background: rgba(255, 255, 255, 0.05); color: #d1d5db; }
+        .form-text { color: #9ca3af !important; }
+        .btn-primary {
+            width: 100%;
+            background: #ffffff;
+            border: none;
+            color: #0f172a;
+            font-weight: 700;
+            border-radius: 12px;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+        }
+        .btn-primary:hover, .btn-primary:focus { background: #ffffff; color: #0f172a; box-shadow: 0 14px 30px rgba(0, 0, 0, 0.45); }
+        .btn-outline-secondary {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            color: #f5f5f4;
+        }
+        .btn-outline-secondary:hover { background: rgba(255, 255, 255, 0.18); border-color: rgba(255, 255, 255, 0.4); color: #ffffff; }
+        .text-decoration-none { color: #d1d5db !important; font-weight: 600; }
+        .text-decoration-none:hover { color: #ffffff !important; }
+        .alert { border-radius: 12px; }
         .otp-group {
             display: flex;
             gap: 8px;
@@ -209,17 +278,23 @@ if (!empty($_SESSION['otp_verified']) && $_SESSION['otp_verified_user_id'] == $u
             text-align: center;
             font-size: 24px;
             font-weight: bold;
-            border: 2px solid #e2e8f0;
+            background: rgba(255, 255, 255, 0.08);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.18);
             border-radius: 8px;
+            color-scheme: dark;
         }
         .otp-box:focus {
-            border-color: #1e3a8a;
-            box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+            background: rgba(255, 255, 255, 0.18);
+            border-color: rgba(255, 255, 255, 0.7);
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.15);
             outline: none;
+            color: #ffffff;
         }
         .otp-box.filled {
-            border-color: #10b981;
-            background-color: #f0fdf4;
+            border-color: #34d399;
+            background-color: rgba(52, 211, 153, 0.15);
+            color: #ffffff;
         }
         .btn:disabled {
             opacity: 0.6;
@@ -229,7 +304,7 @@ if (!empty($_SESSION['otp_verified']) && $_SESSION['otp_verified_user_id'] == $u
             cursor: pointer;
             background-color: transparent;
             border: none;
-            color: #94a3b8;
+            color: #9ca3af;
             width: 36px;
             height: 36px;
             display: flex;
@@ -237,7 +312,7 @@ if (!empty($_SESSION['otp_verified']) && $_SESSION['otp_verified_user_id'] == $u
             justify-content: center;
             flex-shrink: 0;
         }
-        .pw-toggle:hover { color: #1e3a8a; }
+        .pw-toggle:hover { color: #ffffff; }
         .input-group .form-control {
             flex: 1 1 auto;
             min-width: 0;
