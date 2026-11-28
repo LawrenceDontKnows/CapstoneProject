@@ -250,6 +250,17 @@ $slideshowBgColor = '#f1f5f9';
             .login-card { padding: 1.25rem; }
             .btn-custom { font-size: 0.85rem; padding: 10px; }
         }
+
+        /* Auto-adaptive text color for glass card over light/dark slideshow */
+        .login-card.glass { --l-text:#ffffff; --l-muted:rgba(255,255,255,0.85); --l-link:#ffffff; --l-icon:#ffffff; --l-placeholder:rgba(255,255,255,0.7); }
+        .login-card.glass.on-light-bg { --l-text:#1e293b; --l-muted:#475569; --l-link:#1e3a8a; --l-icon:#475569; --l-placeholder:#94a3b8; }
+        .login-card.glass .logo h3,
+        .login-card.glass .form-label,
+        .login-card.glass .form-control { color: var(--l-text) !important; }
+        .login-card.glass .form-control::placeholder { color: var(--l-placeholder) !important; }
+        .login-card.glass .input-group-text { color: var(--l-icon) !important; }
+        .login-card.glass .footer-link .text-muted { color: var(--l-muted) !important; }
+        .login-card.glass .footer-link a { color: var(--l-link) !important; }
     </style>
 </head>
 <body>
@@ -272,7 +283,7 @@ $slideshowBgColor = '#f1f5f9';
     </div>
 
     <div class="login-container">
-        <div class="login-card text-center">
+        <div class="login-card text-center<?php echo $formGlass ? ' glass' : ''; ?>">
             <div class="logo">
                 <img src="<?php echo getSystemLogoUrl($pdo); ?>" alt="Logo" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover;">
                 <h3>GradeView</h3>
@@ -346,9 +357,41 @@ $slideshowBgColor = '#f1f5f9';
                     slides[current].classList.remove('active');
                     current = (current + 1) % slides.length;
                     slides[current].classList.add('active');
+                    updateLoginText();
                 }
                 setInterval(nextSlide, interval);
             }
+
+            // Auto-switch login text color based on slideshow brightness
+            const loginCard = document.querySelector('.login-card.glass');
+            function updateLoginText() {
+                if (!loginCard) return;
+                const active = document.querySelector('.slideshow-bg .slide.active img');
+                const overlay = document.querySelector('.slideshow-overlay');
+                let op = 0;
+                if (overlay && getComputedStyle(overlay).display !== 'none') {
+                    const m = getComputedStyle(overlay).backgroundColor.match(/rgba?\(([^)]+)\)/);
+                    if (m) { const p = m[1].split(',').map(Number); op = p.length > 3 ? p[3] : 0; }
+                }
+                const apply = (lum) => {
+                    if (lum == null) return;
+                    loginCard.classList.toggle('on-light-bg', (lum * (1 - op)) > 0.5);
+                };
+                if (active && active.complete && active.naturalWidth) {
+                    try {
+                        const c = document.createElement('canvas'); c.width = c.height = 40;
+                        const ctx = c.getContext('2d'); ctx.drawImage(active, 0, 0, 40, 40);
+                        const d = ctx.getImageData(0, 0, 40, 40).data;
+                        let r = 0, g = 0, b = 0, n = 0;
+                        for (let i = 0; i < d.length; i += 16) { r += d[i]; g += d[i + 1]; b += d[i + 2]; n++; }
+                        apply((0.299 * (r / n) + 0.587 * (g / n) + 0.114 * (b / n)) / 255);
+                    } catch (e) {}
+                } else if (active) {
+                    active.addEventListener('load', updateLoginText, { once: true });
+                }
+            }
+            updateLoginText();
+            document.querySelectorAll('.slideshow-bg .slide img').forEach(img => img.addEventListener('load', updateLoginText));
 
             const togglePassword = document.querySelector('#togglePassword');
             const passwordInput = document.querySelector('#password');
