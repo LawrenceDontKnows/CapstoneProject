@@ -211,6 +211,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             border-radius: 24px;
             box-shadow: 0 25px 60px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.35);
             padding: 40px;
+            padding-top: 64px;
             width: 100%;
             max-width: 720px;
             margin: clamp(12px, 3vw, 32px) auto;
@@ -221,12 +222,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .header-box h2 { font-weight: 800; color: #ffffff; letter-spacing: -0.5px; }
         .header-box img {
             display: block;
-            margin: 0 auto 12px;
+            margin: -112px auto 12px;
             width: 96px !important;
             height: 96px !important;
             object-fit: cover !important;
             border-radius: 50%;
             background: transparent;
+            position: relative;
+            z-index: 2;
             filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.55));
         }
         @keyframes logoFloat {
@@ -319,7 +322,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         @media (max-width: 576px) {
             body { padding: 10px 0; }
-            .reg-card { padding: 18px; margin: 10px; border-radius: 18px; }
+            .reg-card { padding: 18px; padding-top: 60px; margin: 10px; border-radius: 18px; }
             h3 { font-size: 0.95rem; }
             .header-box h2 { font-size: 1.5rem; }
         }
