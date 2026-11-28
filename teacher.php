@@ -2763,6 +2763,7 @@ $students = $students_stmt->fetchAll();
                         if (textarea && datePickerInput && timePickerInput && insertDateBtn && insertTimeBtn) {
                             flatpickr(datePickerInput, {
                                 dateFormat: "F j, Y",
+                                defaultDate: new Date(),
                                 static: true, // Prevents modal from scrolling up on open
                                 onOpen: function(selectedDates, dateStr, instance) {
                                     instance.calendarContainer.addEventListener('click', e => e.stopPropagation());

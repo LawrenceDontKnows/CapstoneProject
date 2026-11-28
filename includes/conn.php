@@ -37,6 +37,10 @@ $password = $db_config[$db_env]['password'];
 // Automatically set environment based on database selection
 define('APP_ENV', $db_env === 'local' ? 'development' : 'production');
 
+// Use the application's local timezone so date() output (today, logs,
+// audit filters, academic year) matches the user's calendar day.
+date_default_timezone_set('Asia/Manila');
+
 // Only define APP_BASE_URL in web context
 if (php_sapi_name() !== 'cli') {
     define('APP_BASE_URL', $db_env === 'local' 

@@ -363,6 +363,7 @@
                 if (textarea && datePickerInput && timePickerInput && insertDateBtn && insertTimeBtn) {
                     flatpickr(datePickerInput, {
                         dateFormat: "F j, Y",
+                        defaultDate: new Date(),
                         // theme: "airbnb", // Removed for a more compact default style
                         allowInput: true,
                         static: true, // Prevents modal from scrolling up on open
