@@ -57,6 +57,31 @@ if (isset($_POST['ajax_mark_all_read'])) {
     exit;
 }
 
+// Handle AJAX: fetch current user's notifications (real-time popup poller)
+if (isset($_GET['ajax_notifications'])) {
+    header('Content-Type: application/json');
+    try {
+        $uid = (int)$_SESSION['user_id'];
+        $stmt = $pdo->prepare("
+            SELECT n.id, n.message, n.is_read, n.created_at,
+                   u.first_name AS sender_first, u.last_name AS sender_last
+            FROM notifications n
+            JOIN users u ON n.sender_id = u.id
+            WHERE n.recipient_id = ?
+            ORDER BY n.id DESC
+            LIMIT 10
+        ");
+        $stmt->execute([$uid]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $unread = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE recipient_id = ? AND is_read = 0");
+        $unread->execute([$uid]);
+        echo json_encode(['unread_count' => (int)$unread->fetchColumn(), 'notifications' => $rows]);
+    } catch (PDOException $e) {
+        echo json_encode(['unread_count' => 0, 'notifications' => []]);
+    }
+    exit;
+}
+
 // Handle Grade File Import (store Excel/CSV file for external editing)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'import_grade_file') {
     if (!isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], (string)$_POST['csrf_token'])) {
@@ -3591,5 +3616,6 @@ $students = $students_stmt->fetchAll();
             });
         })();
     </script>
+    <script src="includes/notifications.js"></script>
 </body>
 </html>

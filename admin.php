@@ -10,6 +10,31 @@ if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
+// Handle AJAX: fetch current user's notifications (real-time popup poller)
+if (isset($_GET['ajax_notifications'])) {
+    header('Content-Type: application/json');
+    try {
+        $uid = (int)$_SESSION['user_id'];
+        $stmt = $pdo->prepare("
+            SELECT n.id, n.message, n.is_read, n.created_at,
+                   u.first_name AS sender_first, u.last_name AS sender_last
+            FROM notifications n
+            JOIN users u ON n.sender_id = u.id
+            WHERE n.recipient_id = ?
+            ORDER BY n.id DESC
+            LIMIT 10
+        ");
+        $stmt->execute([$uid]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $unread = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE recipient_id = ? AND is_read = 0");
+        $unread->execute([$uid]);
+        echo json_encode(['unread_count' => (int)$unread->fetchColumn(), 'notifications' => $rows]);
+    } catch (PDOException $e) {
+        echo json_encode(['unread_count' => 0, 'notifications' => []]);
+    }
+    exit;
+}
+
 // Handle AJAX Search Suggestions
 if (isset($_GET['ajax_search'])) {
     header('Content-Type: application/json');
@@ -2883,5 +2908,6 @@ $subjects = $subjects_with_enrollments;
             if(importModal){importModal.addEventListener("show.bs.modal",function(e){var b=e.relatedTarget;if(!b)return;var i=document.getElementById("import_grades_subject_id");var n=document.getElementById("import_grades_subject_name");if(i)i.value=b.dataset.subjectId||"";if(n)n.textContent=b.dataset.subjectName||"";});}
         });
     </script>
+    <script src="includes/notifications.js"></script>
 </body>
 </html>
