@@ -152,13 +152,30 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         :root {
             --register-bg-color: <?php echo htmlspecialchars($registerBgColor); ?>;
         }
-        body { 
-            font-family: 'Inter', sans-serif; 
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
             margin: 0;
-            min-height: 100vh;
+            min-height: 100dvh;
             position: relative;
+            overflow-x: hidden;
+            background: #0b1020;
+            color: #f8fafc;
         }
-        /* Background styles */
+        /* Rich abstract fluid-ink backdrop */
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -3;
+            background:
+                radial-gradient(55% 55% at 12% 15%, #06b6d4 0%, transparent 60%),
+                radial-gradient(50% 50% at 85% 12%, #f97316 0%, transparent 55%),
+                radial-gradient(60% 60% at 80% 88%, #db2777 0%, transparent 60%),
+                radial-gradient(55% 55% at 15% 85%, #4f46e5 0%, transparent 60%),
+                linear-gradient(135deg, #0b1020, #111827);
+        }
+        /* Background image layer (admin-configured) */
         .register-bg {
             position: fixed;
             inset: 0;
@@ -180,72 +197,124 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             object-fit: cover;
             object-position: center;
         }
+        /* Frosted glass window container */
         .reg-card {
-            background: #ffffff;
-            border-radius: 1rem;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            padding: 2.5rem;
+            background: rgba(20, 24, 38, 0.68);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 24px;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+            padding: clamp(20px, 4vw, 40px);
             width: 100%;
             max-width: 900px;
-            margin: 2rem auto;
-            border: none;
+            margin: clamp(12px, 3vw, 32px) auto;
+            color: #f8fafc;
+            color-scheme: dark;
         }
         .header-box { text-align: center; margin-bottom: 1.5rem; }
-        .header-box h2 { font-weight: 800; color: #1e293b; }
-        .btn-back { color: #1e3a8a; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; transition: color 0.2s; }
-        .btn-back:hover { color: #dc2626; }
-        h3 { font-size: 1.1rem; font-weight: 700; color: #1e3a8a; margin: 25px 0 15px 0; text-transform: uppercase; border-bottom: 2px solid #f1f5f9; padding-bottom: 8px; }
-        .form-label { font-weight: 600; font-size: 0.85rem; color: #475569; margin-bottom: 4px; }
-        .form-control, .form-select { 
-            border-radius: 8px; 
-            padding: 10px 12px; 
-            border: 1px solid #e2e8f0; 
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        .header-box h2 { font-weight: 800; color: #ffffff; letter-spacing: -0.5px; }
+        .btn-back {
+            color: #e2e8f0;
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            background: rgba(255, 255, 255, 0.08);
+            transition: background 0.2s ease, color 0.2s ease;
         }
+        .btn-back:hover { color: #ffffff; background: rgba(255, 255, 255, 0.18); }
+        h3 {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #67e8f9;
+            margin: 26px 0 14px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+            padding-bottom: 8px;
+        }
+        .form-label {
+            font-weight: 600;
+            font-size: 0.82rem;
+            color: #cbd5e1;
+            margin-bottom: 4px;
+        }
+        .form-control, .form-select {
+            border-radius: 10px;
+            padding: 10px 12px;
+            min-height: 44px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            color: #f8fafc;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+        .form-control::placeholder { color: #94a3b8; }
         .form-control:focus, .form-select:focus {
-            border-color: #1e3a8a;
-            box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+            background: rgba(255, 255, 255, 0.12);
+            border-color: #22d3ee;
+            box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.35);
             outline: none;
+            color: #ffffff;
         }
-        .btn-primary { 
-            background: #1e3a8a; border: none; padding: 12px; font-weight: 700; border-radius: 8px; transition: all 0.3s ease;
-            box-shadow: 0 4px 6px -1px rgba(30, 58, 138, 0.3);
+        .form-select option { color: #0f172a; }
+        .btn-primary {
+            background: linear-gradient(135deg, #6366f1, #22d3ee);
+            border: none;
+            padding: 12px;
+            min-height: 46px;
+            font-weight: 700;
+            border-radius: 12px;
+            color: #0b1020;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+            box-shadow: 0 12px 28px rgba(99, 102, 241, 0.45);
         }
-        .btn-primary:hover { 
-            background: #172a61; transform: translateY(-3px);
-            box-shadow: 0 7px 10px -1px rgba(30, 58, 138, 0.4);
+        .btn-primary:hover {
+            filter: brightness(1.05);
+            transform: translateY(-2px);
+            color: #0b1020;
+            box-shadow: 0 16px 34px rgba(34, 211, 238, 0.5);
         }
-        .is-invalid-custom { border: 2px solid #dc2626 !important; background-color: #fff8f8; }
-        .is-valid-custom { border: 2px solid #10b981 !important; background-color: #f0fdf4; }
-        .invalid-feedback-custom { color: #dc2626; font-size: 0.75rem; font-weight: 600; margin-top: 4px; display: none; }
-        .confirm-label { font-weight: 700; color: #1e3a8a; font-size: 0.75rem; text-transform: uppercase; margin-top: 8px; }
-        .confirm-value { color: #333; margin-bottom: 5px; border-bottom: 1px dashed #eee; padding-bottom: 2px; font-size: 0.95rem; word-break: break-all; }
+        .btn-primary:disabled { filter: grayscale(0.4) brightness(0.9); box-shadow: none; }
+        .is-invalid-custom { border: 2px solid #f87171 !important; background-color: rgba(248, 113, 113, 0.12) !important; }
+        .is-valid-custom { border: 2px solid #34d399 !important; background-color: rgba(52, 211, 153, 0.12) !important; }
+        .invalid-feedback-custom { color: #fca5a5; font-size: 0.75rem; font-weight: 600; margin-top: 4px; display: none; }
+        .confirm-label { font-weight: 700; color: #67e8f9; font-size: 0.75rem; text-transform: uppercase; margin-top: 8px; }
+        .confirm-value { color: #e2e8f0; margin-bottom: 5px; border-bottom: 1px dashed rgba(255,255,255,0.2); padding-bottom: 2px; font-size: 0.95rem; word-break: break-all; }
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
         .modal-header { background: #1e3a8a; color: white; border-bottom: none; }
-        
+        .text-muted { color: #94a3b8 !important; }
+
         @media (max-width: 576px) {
             body { padding: 10px 0; }
-            .reg-card { padding: 1.5rem; margin: 10px; border-radius: 10px; }
+            .reg-card { padding: 18px; margin: 10px; border-radius: 18px; }
             h3 { font-size: 0.95rem; }
             .header-box h2 { font-size: 1.5rem; }
         }
         .input-group {
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.08);
             transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
         .input-group:focus-within {
-            border-color: #1e3a8a;
-            box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+            border-color: #22d3ee;
+            box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.35);
         }
         .input-group .form-control {
             border: none;
             box-shadow: none !important;
+            background: transparent;
         }
         .input-group-text {
             cursor: pointer;
             background-color: transparent;
             border: none;
+            color: #cbd5e1;
         }
     </style>
 </head>
