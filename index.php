@@ -101,7 +101,13 @@ $slideshowBgColor = '#f1f5f9';
             margin: 0;
             min-height: 100dvh;
             overflow-x: hidden;
-            background: #0b1020;
+            background:
+                radial-gradient(38% 38% at 18% 22%, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.06) 40%, transparent 70%),
+                radial-gradient(30% 30% at 82% 30%, rgba(156, 163, 175, 0.45) 0%, transparent 70%),
+                radial-gradient(45% 45% at 78% 82%, rgba(255, 255, 255, 0.18) 0%, transparent 70%),
+                radial-gradient(40% 40% at 22% 80%, rgba(113, 113, 122, 0.4) 0%, transparent 70%),
+                linear-gradient(135deg, #121417 0%, #1f2227 100%);
+            background-attachment: fixed;
             color: #ffffff;
         }
         /* Vibrant mesh fallback (visible when slideshow disabled) */
@@ -111,10 +117,12 @@ $slideshowBgColor = '#f1f5f9';
             inset: 0;
             z-index: -4;
             background:
-                radial-gradient(60% 60% at 12% 18%, #4f46e5 0%, transparent 60%),
-                radial-gradient(50% 50% at 88% 12%, #06b6d4 0%, transparent 55%),
-                radial-gradient(60% 60% at 82% 88%, #db2777 0%, transparent 60%),
-                linear-gradient(135deg, #0b1020, #111827);
+                radial-gradient(38% 38% at 18% 22%, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.06) 40%, transparent 70%),
+                radial-gradient(30% 30% at 82% 30%, rgba(156, 163, 175, 0.45) 0%, transparent 70%),
+                radial-gradient(45% 45% at 78% 82%, rgba(255, 255, 255, 0.18) 0%, transparent 70%),
+                radial-gradient(40% 40% at 22% 80%, rgba(113, 113, 122, 0.4) 0%, transparent 70%),
+                linear-gradient(135deg, #121417 0%, #1f2227 100%);
+            background-attachment: fixed;
         }
 
         /* Slideshow Background */
@@ -122,7 +130,7 @@ $slideshowBgColor = '#f1f5f9';
             position: fixed;
             inset: 0;
             z-index: -3;
-            background: #0b1020;
+            background: transparent;
             overflow: hidden;
         }
         .slideshow-bg .slide {
