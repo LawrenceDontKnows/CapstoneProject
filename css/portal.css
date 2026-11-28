@@ -1777,3 +1777,65 @@ img, svg, video, canvas { max-width: 100%; height: auto; }
         max-height: 70vh;
     }
 }
+
+/* ==========================================================================
+   13. Mobile: flatten sidebar dropdown into visible sidebar list items
+   ========================================================================== */
+@media (max-width: 991px) {
+    .sidebar .nav-item.dropdown {
+        position: static !important;
+    }
+    .sidebar .nav-item.dropdown > .nav-link.dropdown-toggle {
+        display: none !important;
+    }
+    .sidebar .nav-item.dropdown > .dropdown-menu {
+        display: block !important;
+        position: static !important;
+        inset: auto !important;
+        transform: none !important;
+        float: none !important;
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+        margin: 0 12px !important;
+        padding: 0 !important;
+        border: 0 !important;
+        border-radius: var(--border-radius-sm);
+        background: transparent !important;
+        box-shadow: none !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        z-index: auto !important;
+    }
+    .sidebar .nav-item.dropdown > .dropdown-menu > li {
+        display: block !important;
+    }
+    .sidebar .nav-item.dropdown .dropdown-item {
+        display: block !important;
+        width: 100% !important;
+        padding: 1rem 1.5rem !important;
+        margin: var(--spacing-xs) 0 !important;
+        color: var(--white) !important;
+        background: transparent !important;
+        border: 0 !important;
+        border-left: 4px solid transparent !important;
+        border-radius: var(--border-radius-sm) !important;
+        opacity: 0.85 !important;
+        white-space: normal !important;
+        text-align: left !important;
+    }
+    .sidebar .nav-item.dropdown .dropdown-item:hover {
+        background: var(--sidebar-hover-bg) !important;
+        opacity: 1 !important;
+        color: var(--white) !important;
+    }
+    .sidebar .nav-item.dropdown .dropdown-item.active {
+        background: var(--accent-color) !important;
+        border-left-color: var(--white) !important;
+        opacity: 1 !important;
+        font-weight: bold !important;
+    }
+}
