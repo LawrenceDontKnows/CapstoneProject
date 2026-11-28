@@ -321,9 +321,9 @@ if (!empty($_SESSION['otp_verified']) && $_SESSION['otp_verified_user_id'] == $u
             .login-card { padding: 1.5rem; }
             .otp-box { width: 44px; height: 44px; font-size: 20px; }
             .otp-group { gap: 6px; }
-            .input-group { flex-direction: column; gap: 4px; }
-            .input-group .form-control { width: 100%; }
-            .input-group .pw-toggle { align-self: flex-end; padding: 4px 8px; font-size: 14px; width: auto; height: auto; }
+            .input-group { flex-wrap: nowrap; }
+            .input-group .form-control { width: auto; min-width: 0; }
+            .input-group .pw-toggle { flex: 0 0 auto; width: 36px; height: auto; }
             .btn { width: 100%; padding: 10px; font-size: 14px; }
         }
     </style>
