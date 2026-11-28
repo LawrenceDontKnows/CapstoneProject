@@ -1269,3 +1269,129 @@ img, video, canvas, svg {
     }
     .card-body { padding: 0.7rem !important; }
 }
+
+/* ==========================================================================
+   7. Admin dashboard responsive refactor (mobile-first, 320px -> desktop)
+   ========================================================================== */
+
+/* Global box-sizing guardrail */
+*, *::before, *::after { box-sizing: border-box; }
+
+/* --- Top app header (mobile) --- */
+.app-header {
+    min-height: 56px;
+    padding: 12px 16px !important;
+    padding-top: max(12px, env(safe-area-inset-top)) !important;
+    padding-left: max(16px, env(safe-area-inset-left)) !important;
+    padding-right: max(16px, env(safe-area-inset-right)) !important;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.app-header .toggle-btn {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    line-height: 1;
+    color: inherit;
+    cursor: pointer;
+    border-radius: 8px;
+}
+.app-header .toggle-btn:active { background: rgba(0,0,0,0.08); }
+.app-header .app-header-title {
+    font-size: 1rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0;
+}
+
+/* --- Dashboard header + action button wrapping --- */
+.dash-header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: space-between;
+    align-items: center;
+}
+.dash-header-text { min-width: 0; }
+.dash-header-text h2 { margin: 0 0 2px; }
+.dash-header-text span { opacity: 0.85; }
+.dash-header-action { flex: 0 0 auto; }
+
+@media (max-width: 400px) {
+    .dash-header { justify-content: flex-start; }
+    .dash-header-action {
+        flex: 1 1 100%;
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* --- KPI stat cards --- */
+.stat-grid { --bs-gutter-x: 12px; }
+.stat-box {
+    padding: clamp(0.85rem, 2.5vw, 1.25rem);
+    border-radius: 14px;
+    height: 100%;
+}
+.stat-box .card-body { padding: 0; }
+.stat-box .d-flex { align-items: center; gap: 8px; }
+.stat-box h4 {
+    font-size: clamp(1.25rem, 5vw, 1.75rem);
+    line-height: 1.1;
+    margin: 0 0 2px;
+    word-break: break-word;
+}
+.stat-box p {
+    font-size: clamp(0.7rem, 2.5vw, 0.85rem);
+    margin: 0;
+    opacity: 0.9;
+}
+.stat-box i { flex: 0 0 auto; font-size: clamp(1.25rem, 5vw, 2rem) !important; }
+
+/* --- Responsive tables --- */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+}
+.table-responsive .table {
+    min-width: 480px;
+    margin-bottom: 0;
+}
+.table-responsive .table th,
+.table-responsive .table td {
+    white-space: nowrap;
+    padding: 0.55rem 0.75rem;
+    vertical-align: middle;
+}
+
+/* --- Compact phones (320px - 360px) --- */
+@media (max-width: 360px) {
+    .app-header { padding: 10px 12px !important; }
+    .stat-box { border-radius: 12px; }
+    .table-responsive .table { min-width: 420px; }
+    .table-responsive .table th,
+    .table-responsive .table td { padding: 0.45rem 0.5rem; }
+}
+
+/* --- Large phones (390px - 430px) --- */
+@media (min-width: 390px) and (max-width: 430px) {
+    .stat-box h4 { font-size: 1.6rem; }
+}
+
+/* --- Tablets / desktop: keep the header inline, larger tap comfort --- */
+@media (min-width: 992px) {
+    .dash-header-action { font-size: 0.95rem; }
+}

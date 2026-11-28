@@ -1322,24 +1322,24 @@ $subjects = $subjects_with_enrollments;
 
             <!-- Main Content -->
             <div class="main-content" id="main-content">
-                <nav class="navbar navbar-light bg-light px-4 border-bottom d-lg-none">
-                    <i class="fas fa-bars toggle-btn" id="sidebarToggle"></i>
-                    <span class="navbar-brand mb-0 h1">Admin Panel</span>
+                <nav class="navbar navbar-light bg-light px-4 border-bottom d-lg-none app-header">
+                    <button type="button" class="btn toggle-btn" id="sidebarToggle" aria-label="Toggle navigation"><i class="fas fa-bars"></i></button>
+                    <span class="navbar-brand mb-0 h1 app-header-title">Admin Panel</span>
                 </nav>
                 <div class="px-4 py-4">
                 <div class="tab-content">
                     <!-- Dashboard Tab -->
                     <div class="tab-pane fade <?php echo $active_tab === 'dashboard' ? 'show active' : ''; ?>" id="dashboard">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <div>
+                        <div class="dash-header mb-4">
+                            <div class="dash-header-text">
                                 <h2>Admin Dashboard</h2>
                                 <span>Welcome, <?php echo htmlspecialchars($_SESSION['first_name']); ?>!</span>
                             </div>
-                            <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#broadcastNotificationModal"><i class="fas fa-bullhorn me-2"></i>Broadcast Notification</button>
+                            <button class="btn btn-warning dash-header-action" data-bs-toggle="modal" data-bs-target="#broadcastNotificationModal"><i class="fas fa-bullhorn me-2"></i>Broadcast Notification</button>
                         </div>
 
                         <!-- Statistics Cards -->
-                        <div class="row mb-4">
+                        <div class="row mb-4 stat-grid">
                             <div class="col-lg-3 col-md-6 mb-3">
                                 <div class="stat-box grad-blue">
                                     <div class="card-body">
