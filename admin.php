@@ -2186,7 +2186,7 @@ $subjects = $subjects_with_enrollments;
                             <div class="tab-pane fade <?php echo $active_sub_tab === 'broadcast' ? 'show active' : ''; ?>" id="pills-broadcast">
                                 <?php
                                 $role_access_map = [
-                                    'admin' => 'Registrar/Admins', 'teacher' => 'Teachers',
+                                    'admin' => 'Admins', 'teacher' => 'Teachers',
                                     'student' => 'Students', 'all' => 'All Senders'
                                 ];
                                 ?>
@@ -2202,7 +2202,7 @@ $subjects = $subjects_with_enrollments;
                                                     <div class="mb-3">
                                                         <label class="form-label">Visible To</label>
                                                         <select name="role_access" class="form-select" required>
-                                                            <option value="admin">Registrar/Admins Only</option>
+                                                            <option value="admin">Admins Only</option>
                                                             <option value="teacher">Teachers Only</option>
                                                             <option value="student">Students Only</option>
                                                             <option value="all">All Senders (Admins & Teachers)</option>
@@ -2642,7 +2642,7 @@ $subjects = $subjects_with_enrollments;
                         <div class="mb-3">
                             <label class="form-label">Visible To</label>
                             <select name="role_access" id="edit_template_access" class="form-select" required>
-                                <option value="admin">Registrar/Admins Only</option>
+                                <option value="admin">Admins Only</option>
                                 <option value="teacher">Teachers Only</option>
                                 <option value="student">Students Only</option>
                                 <option value="all">All Senders (Admins & Teachers)</option>
