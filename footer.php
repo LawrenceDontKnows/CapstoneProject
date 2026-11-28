@@ -248,7 +248,7 @@ document.addEventListener('DOMContentLoaded', function() {
         position: relative;
         overflow: hidden;
         background:
-            radial-gradient(120% 90% at 50% -10%, rgba(239, 68, 68, 0.18) 0%, transparent 60%),
+            radial-gradient(120% 90% at 50% -10%, rgba(99, 102, 241, 0.2) 0%, transparent 60%),
             rgba(22, 24, 29, 0.78);
         backdrop-filter: blur(28px) saturate(130%);
         -webkit-backdrop-filter: blur(28px) saturate(130%);
@@ -281,8 +281,8 @@ document.addEventListener('DOMContentLoaded', function() {
         justify-content: center;
         font-size: 1.6rem;
         color: #ffffff;
-        background: linear-gradient(135deg, #ef4444, #f97316);
-        box-shadow: 0 12px 30px rgba(239, 68, 68, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+        background: linear-gradient(135deg, #6366f1, #22d3ee);
+        box-shadow: 0 12px 30px rgba(99, 102, 241, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35);
         margin-bottom: 1rem;
     }
     #logoutConfirmModal .logout-confirm-title {
@@ -318,10 +318,10 @@ document.addEventListener('DOMContentLoaded', function() {
         color: #ffffff;
     }
     #logoutConfirmModal .btn-logout-confirm {
-        background: linear-gradient(135deg, #ef4444, #f97316);
+        background: linear-gradient(135deg, #6366f1, #22d3ee);
         border: none;
         color: #ffffff;
-        box-shadow: 0 10px 24px rgba(239, 68, 68, 0.4);
+        box-shadow: 0 10px 24px rgba(99, 102, 241, 0.45);
     }
     #logoutConfirmModal .btn-logout-confirm:hover {
         filter: brightness(1.06);
